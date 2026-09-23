@@ -1,41 +1,8 @@
-# BTS Fandom Archive
+﻿# ARMY Echoes - BTS Fandom Archive & Listening Lounge
 
-防弹少年团（BTS / 방탄소년단）粉丝自建资料档案馆，纯静态页面，无需构建工具。
+## 项目概述
+基于 BTS 音乐与综艺时代的粉丝时空胶囊平台，支持同款取景地打卡回忆切片与同频听歌房互动。
 
-## 功能
-
-- **成员档案**：7 名成员的角色、生日与简介
-- **专辑资料**：出道至今主要专辑，支持按「正规 / 迷你 / 单曲」筛选
-- **团体大事记**：2013–2025 关键节点时间线
-- **资料检索**：跨成员、专辑、大事记的关键词搜索
-
-## 目录结构
-
-```
-bts-fandom-archive/
-├── css/
-│   └── style.css      # 全站样式（暗紫主题，响应式）
-├── js/
-│   └── app.js         # 数据与渲染逻辑
-├── .gitignore
-├── index.html
-└── README.md
-```
-
-## 使用
-
-直接用浏览器打开 `index.html` 即可；或启动本地服务器：
-
-```bash
-# Python
-python -m http.server 8080
-
-# Node
-npx serve .
-```
-
-然后访问 http://localhost:8080
-
-## 说明
-
-本站为粉丝非营利项目，与 BigHit Music / HYBE 无关。
+## 开发里程碑
+- **Week 1**: 初始化项目目录规范，搭建基础语义化 HTML5 骨架与基准色彩变量。
+- **Week 2**: 实现深色磨砂玻璃（Glassmorphism）质感，引入 CSS Grid + Flexbox 响应式布局并适配移动设备断点。

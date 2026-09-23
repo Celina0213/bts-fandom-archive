@@ -1,103 +1,68 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="BTS Fandom Archive - 防弹少年团粉丝资料档案馆" />
-  <title>BTS Fandom Archive | 防弹少年团资料档案馆</title>
-  <link rel="stylesheet" href="css/style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARMY Echoes - BTS 时空胶囊</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <!-- 导航栏 -->
-  <header class="navbar">
-    <div class="container nav-inner">
-      <a href="#home" class="logo">BTS <span>ARCHIVE</span></a>
-      <nav class="nav-links" id="navLinks">
-        <a href="#home">首页</a>
-        <a href="#members">成员</a>
-        <a href="#albums">专辑</a>
-        <a href="#timeline">大事记</a>
-        <a href="#search">资料检索</a>
-      </nav>
-      <button class="menu-btn" id="menuBtn" aria-label="打开菜单">☰</button>
-    </div>
+  <!-- 顶栏导航 -->
+  <header class="app-header">
+    <div class="logo">💜 ARMY Echoes</div>
+    <nav class="era-nav" aria-label="时代选择">
+      <ul id="eraList">
+        <li><button class="active">花样年华 (HYYH)</button></li>
+        <li><button>WINGS</button></li>
+        <li><button>LOVE YOURSELF</button></li>
+      </ul>
+    </nav>
   </header>
 
-  <!-- Hero -->
-  <section class="hero" id="home">
-    <div class="container hero-content">
-      <p class="hero-sub">방탄소년단 · 2013 - Present</p>
-      <h1>记录每一个<span class="accent">心跳</span>的瞬间</h1>
-      <p class="hero-desc">
-        这里是 BTS（防弹少年团）的粉丝资料档案馆，收录成员档案、专辑信息、团体大事记，
-        并支持关键词检索。
-      </p>
-      <div class="hero-actions">
-        <a href="#search" class="btn btn-primary">开始检索</a>
-        <a href="#timeline" class="btn btn-outline">浏览大事记</a>
-      </div>
-      <div class="hero-stats">
-        <div class="stat"><strong>7</strong><span>名成员</span></div>
-        <div class="stat"><strong>13+</strong><span>张专辑</span></div>
-        <div class="stat"><strong>2013</strong><span>出道年份</span></div>
-        <div class="stat"><strong>ARMY</strong><span>官方粉丝名</span></div>
-      </div>
-    </div>
-  </section>
+  <!-- 核心主区域 -->
+  <main class="main-layout">
+    <!-- 侧边栏：曲目列表 -->
+    <aside class="sidebar">
+      <h2>收录曲目</h2>
+      <ul class="song-list" id="songList">
+        <li class="active">
+          <span>🎵 Spring Day (봄날)</span>
+          <small>04:34</small>
+        </li>
+        <li>
+          <span>🎵 I NEED U</span>
+          <small>03:31</small>
+        </li>
+        <li>
+          <span>🎵 RUN</span>
+          <small>03:57</small>
+        </li>
+      </ul>
+    </aside>
 
-  <!-- 成员档案 -->
-  <section class="section" id="members">
-    <div class="container">
-      <h2 class="section-title">成员档案 <small>Members</small></h2>
-      <div class="member-grid" id="memberGrid"><!-- JS 渲染 --></div>
-    </div>
-  </section>
-
-  <!-- 专辑列表 -->
-  <section class="section section-alt" id="albums">
-    <div class="container">
-      <h2 class="section-title">专辑资料 <small>Discography</small></h2>
-      <div class="filter-bar">
-        <button class="chip active" data-filter="all">全部</button>
-        <button class="chip" data-filter="studio">正规专辑</button>
-        <button class="chip" data-filter="mini">迷你专辑</button>
-        <button class="chip" data-filter="single">单曲 / 特别</button>
+    <!-- 中间核心展台 -->
+    <section class="stage">
+      <div class="view-switch">
+        <button class="tab-btn active">📸 时空切片画卷</button>
+        <button class="tab-btn">💬 同频听歌房</button>
       </div>
-      <div class="album-grid" id="albumGrid"><!-- JS 渲染 --></div>
-    </div>
-  </section>
 
-  <!-- 大事记 -->
-  <section class="section" id="timeline">
-    <div class="container">
-      <h2 class="section-title">团体大事记 <small>Timeline</small></h2>
-      <div class="timeline" id="timelineList"><!-- JS 渲染 --></div>
-    </div>
-  </section>
-
-  <!-- 资料检索 -->
-  <section class="section section-alt" id="search">
-    <div class="container">
-      <h2 class="section-title">资料检索 <small>Search</small></h2>
-      <div class="search-box">
-        <input type="text" id="searchInput" placeholder="输入关键词，例如：Dynamite、RM、2019..." />
-        <button class="btn btn-primary" id="searchBtn">搜索</button>
+      <div class="content-box">
+        <span class="badge">Week 2 阶段迭代</span>
+        <h3>深色磨砂玻璃拟态与响应式排版完成</h3>
+        <p>支持多端断点自适应（Flexbox + CSS Grid 弹性架构已激活）。</p>
       </div>
-      <p class="search-hint">支持搜索成员、专辑与大事记条目。</p>
-      <div class="search-results" id="searchResults">
-        <p class="empty-tip">暂无搜索结果，试试上面的关键词吧。</p>
-      </div>
-    </div>
-  </section>
+    </section>
+  </main>
 
-  <!-- 页脚 -->
-  <footer class="footer">
-    <div class="container">
-      <p class="footer-logo">BTS <span>ARCHIVE</span></p>
-      <p class="footer-note">
-        本站为粉丝自建的非营利资料档案，与 BigHit Music / HYBE 无关。<br />
-        © 2026 BTS Fandom Archive · Purple You 💜
-      </p>
+  <!-- 底部固定播放控制条 -->
+  <footer class="player-bar">
+    <div class="track-info">
+      <span class="track-title">Spring Day (봄날)</span>
+      <span class="track-meta">BTS · You Never Walk Alone (2017)</span>
+    </div>
+    <div class="player-controls">
+      <button class="btn-ctrl">▶ 播放</button>
     </div>
   </footer>
 
