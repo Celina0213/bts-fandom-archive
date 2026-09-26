@@ -3,69 +3,61 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ARMY Echoes - BTS 时空胶囊</title>
+  <title>ARMY Echoes - BTS 时空胶囊与同频听歌房</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <!-- 顶栏导航 -->
   <header class="app-header">
     <div class="logo">💜 ARMY Echoes</div>
     <nav class="era-nav" aria-label="时代选择">
-      <ul id="eraList">
-        <li><button class="active">花样年华 (HYYH)</button></li>
-        <li><button>WINGS</button></li>
-        <li><button>LOVE YOURSELF</button></li>
-      </ul>
+      <ul id="eraList"></ul>
     </nav>
   </header>
 
-  <!-- 核心主区域 -->
   <main class="main-layout">
-    <!-- 侧边栏：曲目列表 -->
     <aside class="sidebar">
-      <h2>收录曲目</h2>
-      <ul class="song-list" id="songList">
-        <li class="active">
-          <span>🎵 Spring Day (봄날)</span>
-          <small>04:34</small>
-        </li>
-        <li>
-          <span>🎵 I NEED U</span>
-          <small>03:31</small>
-        </li>
-        <li>
-          <span>🎵 RUN</span>
-          <small>03:57</small>
-        </li>
-      </ul>
+      <h2 id="sidebarTitle">收录曲目</h2>
+      <ul class="song-list" id="songList"></ul>
     </aside>
 
-    <!-- 中间核心展台 -->
     <section class="stage">
       <div class="view-switch">
-        <button class="tab-btn active">📸 时空切片画卷</button>
-        <button class="tab-btn">💬 同频听歌房</button>
+        <button class="tab-btn active" id="tabSliceBtn">📸 时空切片画卷</button>
+        <button class="tab-btn" id="tabChatBtn">💬 同频听歌房</button>
       </div>
 
-      <div class="content-box">
-        <span class="badge">Week 2 阶段迭代</span>
-        <h3>深色磨砂玻璃拟态与响应式排版完成</h3>
-        <p>支持多端断点自适应（Flexbox + CSS Grid 弹性架构已激活）。</p>
+      <!-- 切片展示区域 -->
+      <div class="slice-container" id="sliceContainer">
+        <div class="slice-viewer">
+          <img id="sliceImg" src="" alt="取景地回忆打卡图">
+          <div class="slice-gradient-overlay"></div>
+          <div class="slice-info">
+            <span class="location-badge" id="sliceLocation">加载中...</span>
+            <p class="caption-text" id="sliceCaption">回忆读取中...</p>
+            <span class="author-tag" id="sliceAuthor">by ARMY</span>
+          </div>
+        </div>
+
+        <div class="carousel-controls">
+          <button class="ctrl-btn" id="prevSlice" title="上一张">◀</button>
+          <div class="slice-indicators" id="sliceIndicators"></div>
+          <button class="ctrl-btn" id="nextSlice" title="下一张">▶</button>
+        </div>
       </div>
     </section>
   </main>
 
-  <!-- 底部固定播放控制条 -->
   <footer class="player-bar">
     <div class="track-info">
-      <span class="track-title">Spring Day (봄날)</span>
-      <span class="track-meta">BTS · You Never Walk Alone (2017)</span>
+      <span class="track-title" id="playerTitle">Spring Day (봄날)</span>
+      <span class="track-meta" id="playerMeta">BTS · You Never Walk Alone</span>
     </div>
     <div class="player-controls">
-      <button class="btn-ctrl">▶ 播放</button>
+      <button class="btn-ctrl" id="playBtn">▶ 播放</button>
     </div>
   </footer>
 
+  <script src="js/data.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

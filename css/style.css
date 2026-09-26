@@ -27,7 +27,6 @@ body {
   overflow-x: hidden;
 }
 
-/* 顶部导航 */
 .app-header {
   display: flex;
   justify-content: space-between;
@@ -75,7 +74,6 @@ body {
   box-shadow: 0 0 14px var(--primary-glow);
 }
 
-/* 主内容布局：采用 CSS Grid */
 .main-layout {
   display: grid;
   grid-template-columns: 280px 1fr;
@@ -87,7 +85,6 @@ body {
   margin: 0 auto;
 }
 
-/* 侧边栏 */
 .sidebar {
   background: var(--bg-card);
   backdrop-filter: blur(16px);
@@ -137,7 +134,6 @@ body {
   font-weight: 600;
 }
 
-/* 核心展台 */
 .stage {
   background: var(--bg-card);
   backdrop-filter: blur(16px);
@@ -185,28 +181,116 @@ body {
   box-shadow: 0 0 10px var(--primary-purple);
 }
 
-/* 模块展示框 */
-.content-box {
-  flex: 1;
+/* 切片画卷容器 */
+.slice-container {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  border: 1px dashed var(--border-glass);
-  border-radius: 12px;
-  padding: 2rem;
-  text-align: center;
+  flex: 1;
   gap: 1rem;
-  color: var(--text-muted);
 }
 
-.content-box .badge {
-  background: rgba(255, 209, 102, 0.15);
-  color: var(--accent-gold);
-  border: 1px solid rgba(255, 209, 102, 0.3);
-  padding: 0.3rem 0.8rem;
+.slice-viewer {
+  position: relative;
+  width: 100%;
+  height: 380px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-glass);
+  background: #000;
+}
+
+.slice-viewer img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: opacity 0.4s ease-in-out, transform 0.6s ease;
+}
+
+.slice-gradient-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.1) 40%, rgba(10,8,20,0.88) 100%);
+}
+
+.slice-info {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 2;
+}
+
+.location-badge {
+  align-self: flex-start;
+  background: rgba(155, 93, 229, 0.4);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--primary-purple);
+  color: #fff;
+  padding: 0.25rem 0.75rem;
   border-radius: 20px;
   font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.caption-text {
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: #f1f1f1;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+}
+
+.author-tag {
+  font-size: 0.8rem;
+  color: var(--accent-gold);
+}
+
+.carousel-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+.ctrl-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-glass);
+  color: var(--text-main);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.ctrl-btn:hover {
+  background: var(--primary-purple);
+  box-shadow: 0 0 10px var(--primary-glow);
+}
+
+.slice-indicators {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transition: var(--transition-smooth);
+}
+
+.indicator-dot.active {
+  background: var(--primary-purple);
+  width: 22px;
+  border-radius: 999px;
+  box-shadow: 0 0 8px var(--primary-purple);
 }
 
 /* 底部播放条 */
@@ -260,41 +344,12 @@ body {
   box-shadow: 0 0 12px var(--primary-purple);
 }
 
-/* 响应式设计（手机与平板适配） */
 @media (max-width: 900px) {
   .main-layout {
     grid-template-columns: 1fr;
     padding: 1rem;
   }
-
-  .sidebar {
-    order: 2;
-  }
-
-  .stage {
-    order: 1;
-    min-height: 400px;
-  }
-}
-
-@media (max-width: 600px) {
-  .app-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
-    padding: 1rem;
-  }
-
-  .era-nav ul {
-    overflow-x: auto;
-    width: 100%;
-    padding-bottom: 0.3rem;
-  }
-
-  .player-bar {
-    flex-direction: column;
-    gap: 0.75rem;
-    align-items: flex-start;
-    padding: 1rem;
-  }
+  .sidebar { order: 2; }
+  .stage { order: 1; }
+  .slice-viewer { height: 280px; }
 }
