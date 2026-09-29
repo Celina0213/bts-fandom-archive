@@ -43,6 +43,10 @@
           <div class="slice-indicators" id="sliceIndicators"></div>
           <button class="ctrl-btn" id="nextSlice" title="下一张">▶</button>
         </div>
+
+        <div class="upload-trigger-area">
+          <button class="btn-primary" id="openUploadBtn">+ 上传我的同款回忆切片</button>
+        </div>
       </div>
     </section>
   </main>
@@ -56,6 +60,38 @@
       <button class="btn-ctrl" id="playBtn">▶ 播放</button>
     </div>
   </footer>
+
+  <!-- 上传回忆弹窗 -->
+  <dialog class="modal" id="uploadModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>💜 上传你的同款回忆</h3>
+        <button class="close-btn" id="closeUploadBtn">&times;</button>
+      </div>
+      <form id="uploadForm">
+        <div class="form-group">
+          <label for="formLocation">打卡取景地 / 城市</label>
+          <input type="text" id="formLocation" placeholder="例如：江陵 · 香湖海边巴士站" required>
+        </div>
+        <div class="form-group">
+          <label for="formImage">照片 URL 地址</label>
+          <input type="url" id="formImage" placeholder="https://example.com/photo.jpg" required>
+        </div>
+        <div class="form-group">
+          <label for="formAuthor">你的阿米昵称</label>
+          <input type="text" id="formAuthor" placeholder="例如：ARMY_Seoul" required>
+        </div>
+        <div class="form-group">
+          <label for="formCaption">关于这首歌的回忆或旅行见闻</label>
+          <textarea id="formCaption" rows="3" placeholder="写下当时听这首歌的心情或现场故事..." required></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="cancelUploadBtn">取消</button>
+          <button type="submit" class="btn-primary">确认发布</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
 
   <script src="js/data.js"></script>
   <script src="js/app.js"></script>

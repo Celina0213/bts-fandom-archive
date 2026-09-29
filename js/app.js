@@ -4,6 +4,44 @@
   let currentSliceIndex = 0;
   let autoSlideTimer = null;
 
+  const STORAGE_KEY = "army_echoes_custom_slices";
+
+  // 从 localStorage 恢复自定义切片数据
+  function loadCustomSlices() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const customData = JSON.parse(stored);
+        Object.keys(customData).forEach(songId => {
+          for (const era in ARCHIVE_DATA) {
+            const song = ARCHIVE_DATA[era].songs.find(s => s.id === songId);
+            if (song) {
+              song.slices = [...customData[songId], ...song.slices];
+            }
+          }
+        });
+      }
+    } catch (e) {
+      console.error("Failed to load custom slices from localStorage:", e);
+    }
+  }
+
+  // 保存切片至 localStorage
+  function saveSliceToStorage(songId, slice) {
+    try {
+      let stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      if (!stored[songId]) {
+        stored[songId] = [];
+      }
+      stored[songId].unshift(slice);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+    } catch (e) {
+      console.error("Failed to save slice to localStorage:", e);
+    }
+  }
+
+  loadCustomSlices();
+
   const eraList = document.getElementById("eraList");
   const songList = document.getElementById("songList");
   const sidebarTitle = document.getElementById("sidebarTitle");
@@ -16,6 +54,12 @@
 
   const playerTitle = document.getElementById("playerTitle");
   const playerMeta = document.getElementById("playerMeta");
+
+  const uploadModal = document.getElementById("uploadModal");
+  const openUploadBtn = document.getElementById("openUploadBtn");
+  const closeUploadBtn = document.getElementById("closeUploadBtn");
+  const cancelUploadBtn = document.getElementById("cancelUploadBtn");
+  const uploadForm = document.getElementById("uploadForm");
 
   function getActiveSong() {
     return ARCHIVE_DATA[currentEraKey].songs[currentSongIndex];
@@ -122,7 +166,39 @@
     }
   });
 
-  // 初始化应用
+  // 模态弹窗控制
+  openUploadBtn.addEventListener("click", () => {
+    uploadModal.showModal();
+  });
+
+  const closeModal = () => {
+    uploadModal.close();
+    uploadForm.reset();
+  };
+
+  closeUploadBtn.addEventListener("click", closeModal);
+  cancelUploadBtn.addEventListener("click", closeModal);
+
+  uploadForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const song = getActiveSong();
+    const newSlice = {
+      location: document.getElementById("formLocation").value.trim(),
+      image: document.getElementById("formImage").value.trim(),
+      author: document.getElementById("formAuthor").value.trim(),
+      caption: document.getElementById("formCaption").value.trim()
+    };
+
+    // 置顶插入当前歌曲切片列表并持久化保存
+    song.slices.unshift(newSlice);
+    saveSliceToStorage(song.id, newSlice);
+
+    currentSliceIndex = 0;
+    renderSlice();
+    startAutoSlide();
+    closeModal();
+  });
+
   renderEras();
   renderSongs();
   renderSlice();
