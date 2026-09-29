@@ -23,10 +23,10 @@
     <section class="stage">
       <div class="view-switch">
         <button class="tab-btn active" id="tabSliceBtn">📸 时空切片画卷</button>
-        <button class="tab-btn" id="tabChatBtn">💬 同频听歌房</button>
+        <button class="tab-btn" id="tabChatBtn">💬 同频听歌房 (<span id="listenerBadge">1,280</span> 人)</button>
       </div>
 
-      <!-- 切片展示区域 -->
+      <!-- 模式 A：切片画卷展示 -->
       <div class="slice-container" id="sliceContainer">
         <div class="slice-viewer">
           <img id="sliceImg" src="" alt="取景地回忆打卡图">
@@ -48,6 +48,24 @@
           <button class="btn-primary" id="openUploadBtn">+ 上传我的同款回忆切片</button>
         </div>
       </div>
+
+      <!-- 模式 B：同频听歌房聊天室 -->
+      <div class="chat-container" id="chatContainer" style="display: none;">
+        <div class="chat-header">
+          <div class="room-status">
+            <span class="pulse-dot"></span>
+            <span>正在与全球阿米同步聆听此曲</span>
+          </div>
+          <button class="heart-cheer-btn" id="cheerBtn" title="发射紫心应援">💜 应援 (<span id="cheerCount">777</span>)</button>
+        </div>
+
+        <div class="chat-messages" id="chatBox"></div>
+
+        <form class="chat-form" id="chatForm">
+          <input type="text" id="chatInput" placeholder="输入此刻听歌的共鸣感受..." maxlength="100" required>
+          <button type="submit" class="btn-primary">发送</button>
+        </form>
+      </div>
     </section>
   </main>
 
@@ -57,6 +75,7 @@
       <span class="track-meta" id="playerMeta">BTS · You Never Walk Alone</span>
     </div>
     <div class="player-controls">
+      <div class="audio-status" id="audioStatus">音频待命</div>
       <button class="btn-ctrl" id="playBtn">▶ 播放</button>
     </div>
   </footer>

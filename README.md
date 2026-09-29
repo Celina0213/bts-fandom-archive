@@ -8,3 +8,4 @@
 - **Week 2**: 实现深色磨砂玻璃（Glassmorphism）质感，引入 CSS Grid + Flexbox 响应式布局并适配移动设备断点。
 - **Week 3**: 构建结构化数据源 (data.js)，实现时期/歌曲多级联动与时空切片画卷自动轮播交互。
 - **Week 4**: 添加粉丝打卡回忆上传弹窗交互，利用 LocalStorage 实现用户 UGC 切片本地持久化存储。
+- **Week 5**: 完成同频听歌房聊天流与在线人数波动，接入 Web Audio API 打造免版权氛围音乐引擎。
