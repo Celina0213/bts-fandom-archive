@@ -3,7 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="ARMY Echoes - BTS 粉丝时空胶囊与同频听歌房互动平台">
+  <meta property="og:title" content="ARMY Echoes - BTS Fandom Archive">
+  <meta property="og:description" content="记录每一段花样年华，与全球阿米同频聆听。">
+  <meta property="og:type" content="website">
   <title>ARMY Echoes - BTS 时空胶囊与同频听歌房</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22><text y=%2226%22 font-size=%2228%22>💜</text></svg>">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -15,12 +20,12 @@
   </header>
 
   <main class="main-layout">
-    <aside class="sidebar">
+    <aside class="sidebar" aria-label="曲目导航">
       <h2 id="sidebarTitle">收录曲目</h2>
       <ul class="song-list" id="songList"></ul>
     </aside>
 
-    <section class="stage">
+    <section class="stage" aria-label="核心展示区">
       <div class="view-switch">
         <button class="tab-btn active" id="tabSliceBtn">📸 时空切片画卷</button>
         <button class="tab-btn" id="tabChatBtn">💬 同频听歌房 (<span id="listenerBadge">1,280</span> 人)</button>
@@ -29,7 +34,7 @@
       <!-- 模式 A：切片画卷展示 -->
       <div class="slice-container" id="sliceContainer">
         <div class="slice-viewer">
-          <img id="sliceImg" src="" alt="取景地回忆打卡图">
+          <img id="sliceImg" src="" alt="取景地回忆打卡图" loading="lazy">
           <div class="slice-gradient-overlay"></div>
           <div class="slice-info">
             <span class="location-badge" id="sliceLocation">加载中...</span>
@@ -59,10 +64,10 @@
           <button class="heart-cheer-btn" id="cheerBtn" title="发射紫心应援">💜 应援 (<span id="cheerCount">777</span>)</button>
         </div>
 
-        <div class="chat-messages" id="chatBox"></div>
+        <div class="chat-messages" id="chatBox" role="log" aria-live="polite"></div>
 
         <form class="chat-form" id="chatForm">
-          <input type="text" id="chatInput" placeholder="输入此刻听歌的共鸣感受..." maxlength="100" required>
+          <input type="text" id="chatInput" placeholder="输入此刻听歌的共鸣感受..." maxlength="100" autocomplete="off" required>
           <button type="submit" class="btn-primary">发送</button>
         </form>
       </div>
@@ -80,7 +85,7 @@
     </div>
   </footer>
 
-  <!-- 上传回忆弹窗 -->
+  <!-- 上传回忆模态弹窗 -->
   <dialog class="modal" id="uploadModal">
     <div class="modal-box">
       <div class="modal-header">
