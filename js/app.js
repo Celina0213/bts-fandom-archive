@@ -4,23 +4,11 @@
   let currentSliceIndex = 0;
   let autoSlideTimer = null;
 
-  // Web Audio API 状态
-  let audioCtx = null;
-  let osc = null;
-  let gainNode = null;
-  let isPlaying = false;
+  // Spotify Embed 状态
+  const spotifyEmbedWrapper = document.getElementById("spotifyEmbedWrapper");
 
   const SLICE_STORAGE_KEY = "army_echoes_custom_slices";
   const CHAT_STORAGE_KEY = "army_echoes_chats";
-
-  // 歌曲对应基频（Lo-Fi 氛围音和弦基准）
-  const SONG_FREQUENCIES = {
-    "spring-day": 261.63, // C4
-    "i-need-u": 293.66,   // D4
-    "run": 329.63,        // E4
-    "bst": 349.23,        // F4
-    "dna": 392.00         // G4
-  };
 
   // 读取本地存储
   function loadCustomData() {
@@ -169,44 +157,51 @@
     listenerBadge.textContent = base.toLocaleString();
   }
 
-  // Web Audio 原生合成引擎（免版权外部音频文件）
-  function toggleAudio() {
-    const song = getActiveSong();
-    const freq = SONG_FREQUENCIES[song.id] || 261.63;
-
-    if (!audioCtx) {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      osc = audioCtx.createOscillator();
-      gainNode = audioCtx.createGain();
-
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-      gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
-
-      osc.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-      osc.start();
-      isPlaying = true;
-    } else {
-      if (isPlaying) {
-        gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
-        isPlaying = false;
-      } else {
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        gainNode.gain.setTargetAtTime(0.08, audioCtx.currentTime, 0.05);
-        isPlaying = true;
-      }
-    }
-
-    playBtn.textContent = isPlaying ? "⏸ 暂停" : "▶ 播放";
-    audioStatus.textContent = isPlaying ? "🎵 Lo-Fi 氛围和弦共鸣中" : "音频已暂停";
+  // Spotify Embed 播放器（替代 Web Audio 合成音）
+  function loadSpotifyEmbed(spotifyId) {
+    spotifyEmbedWrapper.innerHTML = `
+      <iframe
+        style="border-radius:12px"
+        src="https://open.spotify.com/embed/track/${spotifyId}?utm_source=generator&theme=0"
+        width="100%"
+        height="80"
+        frameBorder="0"
+        allowfullscreen=""
+        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+        loading="lazy"
+        title="Spotify Player"
+      ></iframe>
+    `;
   }
 
-  function updateSongAudioFrequency() {
-    if (isPlaying && osc && audioCtx) {
-      const song = getActiveSong();
-      const freq = SONG_FREQUENCIES[song.id] || 261.63;
-      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  // iTunes Search API 回退：按歌名动态搜索 30 秒官方试听（免费、无需密钥）
+  async function loadItunesPreview(song) {
+    try {
+      const term = encodeURIComponent(`BTS ${song.title.replace(/\s*\(.*\)$/, "")}`);
+      const res = await fetch(`https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=10`);
+      const data = await res.json();
+      const hit = data.results.find(r => r.artistName === "BTS") || data.results[0];
+      if (hit && hit.previewUrl) {
+        spotifyEmbedWrapper.innerHTML = `
+          <div class="itunes-fallback">
+            <span class="itunes-label">🎧 30s 试听 · iTunes</span>
+            <audio controls preload="none" src="${hit.previewUrl}"></audio>
+          </div>
+        `;
+        return;
+      }
+    } catch (e) {
+      console.error("iTunes search error:", e);
+    }
+    spotifyEmbedWrapper.innerHTML = '<p class="spotify-fallback">🎵 此曲目暂无可用音源</p>';
+  }
+
+  async function updateSpotifyPlayer() {
+    const song = getActiveSong();
+    if (song.spotifyId) {
+      loadSpotifyEmbed(song.spotifyId);
+    } else {
+      await loadItunesPreview(song);
     }
   }
 
@@ -269,7 +264,8 @@
     setTimeout(() => cheerBtn.style.transform = "scale(1)", 150);
   });
 
-  playBtn.addEventListener("click", toggleAudio);
+  // 初始化时加载第一首歌的 Spotify 播放器
+  updateSpotifyPlayer();
 
   eraList.addEventListener("click", e => {
     const eraBtn = e.target.closest("button");
@@ -281,7 +277,7 @@
       renderSongs();
       renderSlice();
       renderChats();
-      updateSongAudioFrequency();
+      updateSpotifyPlayer();
       startAutoSlide();
     }
   });
@@ -294,7 +290,7 @@
       renderSongs();
       renderSlice();
       renderChats();
-      updateSongAudioFrequency();
+      updateSpotifyPlayer();
       startAutoSlide();
     }
   });

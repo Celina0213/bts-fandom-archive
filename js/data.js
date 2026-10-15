@@ -8,6 +8,7 @@
         title: "Spring Day (봄날)",
         album: "You Never Walk Alone (2017)",
         duration: "04:34",
+        spotifyId: "0WNGsQ1oAuHzNTk8jivBKW", // Spring Day — 已验证
         slices: [
           {
             location: "江陵 · 香湖海边",
@@ -34,6 +35,7 @@
         title: "I NEED U",
         album: "花样年华 pt.1 (2015)",
         duration: "03:31",
+        spotifyId: "3wQnyXNFXNUEOBt1pb4urq", // I Need U — 已验证
         slices: [
           {
             location: "首尔 · 废弃加油站",
@@ -48,6 +50,7 @@
         title: "RUN",
         album: "花样年华 pt.2 (2015)",
         duration: "03:57",
+        // spotifyId 未确认 — 留空走 iTunes 30s 试听回退；拿到真实 ID 后填入即可切换回 Spotify
         slices: [
           {
             location: "釜山 · 隧道公路",
@@ -68,6 +71,7 @@
         title: "Blood Sweat & Tears",
         album: "WINGS (2016)",
         duration: "03:37",
+        spotifyId: "2u54HNQamwFuOMLSuhSRom", // Blood Sweat & Tears — 已验证
         slices: [
           {
             location: "美术馆 · 雕塑展厅",
@@ -88,6 +92,7 @@
         title: "DNA",
         album: "LOVE YOURSELF 承 'Her' (2017)",
         duration: "03:43",
+        spotifyId: "2ngmiq1KoYn3x25VOmvd8F", // DNA — 单一来源候选，若播放器异常请核对
         slices: [
           {
             location: "首尔 · 汉江盘浦大桥",
