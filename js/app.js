@@ -583,17 +583,6 @@
       progressBar.style.width = pct + "%";
       timeLabel.textContent = `${fmtTime(audioEl.currentTime)} / ${fmtTime(audioEl.duration)}`;
     });
-    // 逐帧刷新进度条：比仅靠 timeupdate 更顺滑，部分手机浏览器节流事件时也能跟上播放
-    const thisAudio = audioEl;
-    (function progressLoop() {
-      if (audioEl !== thisAudio) return; // 已切歌或停止，结束循环
-      if (!thisAudio.paused && !thisAudio.ended) {
-        const pct = thisAudio.duration ? (thisAudio.currentTime / thisAudio.duration) * 100 : 0;
-        progressBar.style.width = pct + "%";
-        timeLabel.textContent = `${fmtTime(thisAudio.currentTime)} / ${fmtTime(thisAudio.duration)}`;
-      }
-      requestAnimationFrame(progressLoop);
-    })();
     audioEl.addEventListener("ended", () => {
       localPlaying = false;
       localPlayBtn.textContent = "▶";

@@ -719,11 +719,6 @@ body {
   gap: 0.9rem;
 }
 
-/* display:flex 会覆盖 hidden 属性，必须显式声明才能真正隐藏 */
-.custom-player[hidden] {
-  display: none;
-}
-
 .play-circle {
   width: 46px;
   height: 46px;
