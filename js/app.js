@@ -4,11 +4,69 @@
   let currentSliceIndex = 0;
   let autoSlideTimer = null;
 
-  // Spotify Embed 状态
+  // 播放器状态
   const spotifyEmbedWrapper = document.getElementById("spotifyEmbedWrapper");
+  const customPlayer = document.getElementById("customPlayer");
+  const localPlayBtn = document.getElementById("localPlayBtn");
+  const progressWrap = document.getElementById("progressWrap");
+  const progressBar = document.getElementById("progressBar");
+  const timeLabel = document.getElementById("timeLabel");
+  const lyricsBtn = document.getElementById("lyricsBtn");
+  const lyricsPanel = document.getElementById("lyricsPanel");
+  const qqLinkBtn = document.getElementById("qqLinkBtn");
+
+  // 本地音源播放状态（个人使用：音频文件放 assets/music/，不入 Git 不上线）
+  let audioEl = null;
+  let localPlaying = false;
+  const AUDIO_EXTS = ["mp3", "m4a", "flac", "wav"];
 
   const SLICE_STORAGE_KEY = "army_echoes_custom_slices";
   const CHAT_STORAGE_KEY = "army_echoes_chats";
+  const LIKE_KEY = "army_echoes_slice_likes";
+  const LIKED_KEY = "army_echoes_slice_liked";
+
+  // ---------- Memory slice likes（localStorage 持久化 + BroadcastChannel 多标签同步） ----------
+  function loadLikeMap() {
+    try { return JSON.parse(localStorage.getItem(LIKE_KEY) || "{}"); } catch (e) { return {}; }
+  }
+
+  function saveLikeMap(m) {
+    localStorage.setItem(LIKE_KEY, JSON.stringify(m));
+  }
+
+  function loadLikedSet() {
+    try { return new Set(JSON.parse(localStorage.getItem(LIKED_KEY) || "[]")); } catch (e) { return new Set(); }
+  }
+
+  // 为没有 sid 的切片生成稳定 ID（旧数据/用户上传），基于图片 URL 哈希，顺序无关
+  function getSliceSid(slice, songId) {
+    if (slice.sid) return slice.sid;
+    let h = 0;
+    const s = (slice.image || "") + "|" + (slice.author || "");
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    slice.sid = songId + "-h" + h.toString(36);
+    return slice.sid;
+  }
+
+  function likeCount(sid, base) {
+    const m = loadLikeMap();
+    return sid in m ? m[sid] : (base || 0);
+  }
+
+  function toggleLike(sid, base) {
+    const m = loadLikeMap();
+    const liked = loadLikedSet();
+    if (liked.has(sid)) {
+      m[sid] = Math.max(likeCount(sid, base) - 1, 0);
+      liked.delete(sid);
+    } else {
+      m[sid] = likeCount(sid, base) + 1;
+      liked.add(sid);
+    }
+    saveLikeMap(m);
+    localStorage.setItem(LIKED_KEY, JSON.stringify([...liked]));
+    return m[sid];
+  }
 
   // 读取本地存储
   function loadCustomData() {
@@ -29,8 +87,8 @@
         ARCHIVE_DATA[era].songs.forEach(song => {
           if (!song.chats) {
             song.chats = [
-              { user: "PurpleARMY_07", text: "前奏一响瞬间回到那个冬天 💜", time: "18:20" },
-              { user: "BusanBoy", text: "希望今年还能在首尔和大家相聚！", time: "19:05" }
+              { user: "PurpleARMY_07", ip: "Overseas", text: "The intro hits and I'm right back in that winter 💜", time: "18:20" },
+              { user: "BusanBoy", ip: "Overseas", text: "Hope we can all meet again in Seoul someday!", time: "19:05" }
             ];
           }
         });
@@ -53,6 +111,210 @@
 
   loadCustomData();
 
+  // ---------- 登录资料 + 同频房在线状态（本机模拟：多标签页互通，无后端） ----------
+  const PROFILE_KEY = "army_echoes_profile";
+  const CLIENT_ID = Math.random().toString(36).slice(2, 10);
+  const STATUS_OPTIONS = ["Listening", "Sleeping", "Studying", "Eating", "Slacking off", "Daydreaming"];
+  const IP_OPTIONS = ["Beijing", "Shanghai", "Guangdong", "Taipei", "Hong Kong", "Seoul", "Busan", "Tokyo", "Los Angeles", "New York", "London", "Paris", "Bangkok", "Singapore", "Overseas"];
+  const SIM_REPLIES = [
+    "Sending you a hug, everything will be okay 💜",
+    "Same here! This song is forever a masterpiece",
+    "Your story just healed something in me too",
+    "Welcome to the lounge, let's keep listening together",
+    "Wishing you the sweetest dreams tonight 🌙",
+    "Yesss congrats, that's amazing! 🎉",
+    "Let's go, you've got this today!",
+    "You're not the only one still awake at this hour haha"
+  ];
+
+  const liveStatusText = document.getElementById("liveStatusText");
+  const profileChip = document.getElementById("profileChip");
+  const profileModal = document.getElementById("profileModal");
+  const profileForm = document.getElementById("profileForm");
+  const profileNickInput = document.getElementById("profileNickInput");
+  const profileIpSelect = document.getElementById("profileIpSelect");
+  const profileStatusSelect = document.getElementById("profileStatusSelect");
+  const cancelProfileBtn = document.getElementById("cancelProfileBtn");
+  const closeProfileBtn = document.getElementById("closeProfileBtn");
+  const replyIndicator = document.getElementById("replyIndicator");
+  const replyTargetName = document.getElementById("replyTargetName");
+  const cancelReplyBtn = document.getElementById("cancelReplyBtn");
+
+  let myProfile = null;      // 当前登录用户 {nick, ip, status}
+  let simListeners = [];     // 模拟的同频听众
+  let replyTarget = null;    // 正在回复的消息
+  const peers = new Map();   // 其他标签页的在线用户
+  const bc = "BroadcastChannel" in window ? new BroadcastChannel("army_echoes_lounge") : null;
+
+  function saveProfile(p) {
+    myProfile = p;
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+  }
+
+  function applyProfileUI() {
+    const avatar = document.getElementById("profileAvatar");
+    const name = document.getElementById("profileName");
+    const sub = document.getElementById("profileSub");
+    if (myProfile && myProfile.nick) {
+      avatar.textContent = myProfile.nick.trim().charAt(0).toUpperCase();
+      name.textContent = myProfile.nick;
+      sub.textContent = `IP ${myProfile.ip} · ${myProfile.status}`;
+    } else {
+      avatar.textContent = "?";
+      name.textContent = "Guest";
+      sub.textContent = "Tap to set up profile";
+    }
+  }
+
+  function persistChat(songId, msg) {
+    let storedChats = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) || "{}");
+    if (!storedChats[songId]) storedChats[songId] = [];
+    storedChats[songId].push(msg);
+    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(storedChats));
+  }
+
+  function seedSimListeners() {
+    const SIM_NAMES = ["PurpleARMY", "BusanBoy", "Seoul_Glow", "Mochi糖糖", "JK兔", "HopeWorld_HD", "Suga式微笑", "Jin世界帅", "Bora_紫", "Ulsan少女", "Moonchild_月", "Epilogue_7", "SpringDay风", "Fire_燃烧", "Dna_螺旋", "IDOL灯光"];
+    const n = 26 + Math.floor(Math.random() * 20);
+    simListeners = Array.from({ length: n }, () => ({
+      user: SIM_NAMES[Math.floor(Math.random() * SIM_NAMES.length)] + "_" + Math.floor(Math.random() * 90 + 10),
+      ip: IP_OPTIONS[Math.floor(Math.random() * IP_OPTIONS.length)],
+      status: STATUS_OPTIONS[Math.floor(Math.random() * STATUS_OPTIONS.length)]
+    }));
+  }
+
+  // 歌曲上方的实时状态条：正在听这首歌的人数 + 状态分布
+  function renderLiveStatus() {
+    const all = [...simListeners];
+    if (myProfile && myProfile.nick) all.push({ status: myProfile.status });
+    peers.forEach(p => { if (p.profile && p.profile.status) all.push(p.profile); });
+    const counts = {};
+    all.forEach(u => { counts[u.status] = (counts[u.status] || 0) + 1; });
+    const parts = Object.keys(counts).filter(s => counts[s] > 0).map(s => `${s} ${counts[s]}人`).join(" · ");
+    liveStatusText.textContent = `🎧 Now listening to "${getActiveSong().title}" — ${all.length} fans · ${parts}`;
+    listenerBadge.textContent = all.length;
+  }
+
+  function broadcastPresence() {
+    if (bc) bc.postMessage({ type: "presence", id: CLIENT_ID, profile: myProfile, ts: Date.now() });
+  }
+
+  if (bc) {
+    bc.onmessage = (e) => {
+      const d = e.data;
+      if (!d) return;
+      if (d.type === "presence" && d.id !== CLIENT_ID) {
+        peers.set(d.id, { profile: d.profile, ts: d.ts });
+        renderLiveStatus();
+      } else if (d.type === "chat" && d.songId && d.msg) {
+        for (const era in ARCHIVE_DATA) {
+          const s = ARCHIVE_DATA[era].songs.find(x => x.id === d.songId);
+          if (s && s.chats && !s.chats.some(c => c._mid === d.msg._mid)) s.chats.push(d.msg);
+        }
+        persistChat(d.songId, d.msg);
+        if (d.songId === getActiveSong().id) renderChats();
+      } else if (d.type === "like" && d.sid) {
+        const m = loadLikeMap();
+        m[d.sid] = d.count;
+        saveLikeMap(m);
+        const song = getActiveSong();
+        const slices = song.slices;
+        if (slices && slices.length) {
+          const cur = slices[currentSliceIndex % slices.length];
+          if (getSliceSid(cur, song.id) === d.sid) {
+            sliceLikeCount.textContent = d.count;
+            sliceLikeBtn.classList.toggle("liked", loadLikedSet().has(d.sid));
+          }
+        }
+      }
+    };
+    // 心跳：广播自己的在线状态，清理超过 15 秒未活跃的标签页
+    setInterval(() => {
+      broadcastPresence();
+      const now = Date.now();
+      for (const [id, p] of peers) if (now - p.ts > 15000) peers.delete(id);
+      renderLiveStatus();
+    }, 5000);
+  }
+
+  // 模拟用户状态缓慢变化，让分布"活"起来
+  setInterval(() => {
+    for (let i = 0; i < 4; i++) {
+      const u = simListeners[Math.floor(Math.random() * simListeners.length)];
+      if (u) u.status = STATUS_OPTIONS[Math.floor(Math.random() * STATUS_OPTIONS.length)];
+    }
+    renderLiveStatus();
+  }, 7000);
+
+  function openProfileModal() {
+    if (myProfile) {
+      profileNickInput.value = myProfile.nick || "";
+      profileIpSelect.value = myProfile.ip || IP_OPTIONS[0];
+      profileStatusSelect.value = myProfile.status || STATUS_OPTIONS[0];
+    }
+    profileModal.showModal();
+  }
+
+  function initProfileFeature() {
+    profileIpSelect.innerHTML = IP_OPTIONS.map(ip => `<option value="${ip}">${ip}</option>`).join("");
+    profileStatusSelect.innerHTML = STATUS_OPTIONS.map(s => `<option value="${s}">${s}</option>`).join("");
+    loadProfile();
+    applyProfileUI();
+    seedSimListeners();
+    renderLiveStatus();
+    profileChip.addEventListener("click", openProfileModal);
+    const closeProfile = () => profileModal.close();
+    closeProfileBtn.addEventListener("click", closeProfile);
+    cancelProfileBtn.addEventListener("click", closeProfile);
+    profileForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      saveProfile({
+        nick: profileNickInput.value.trim() || "游客ARMY",
+        ip: profileIpSelect.value,
+        status: profileStatusSelect.value
+      });
+      applyProfileUI();
+      renderLiveStatus();
+      broadcastPresence();
+      profileModal.close();
+    });
+    if (!myProfile) openProfileModal(); // 首次访问自动弹出"登录"
+  }
+
+  function loadProfile() {
+    try { myProfile = JSON.parse(localStorage.getItem(PROFILE_KEY)) || null; } catch (e) { myProfile = null; }
+  }
+
+  // 模拟同频房其他用户回复你刚发的消息
+  function scheduleSimReplies(songId, myMsg) {
+    const n = 1 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < n; i++) {
+      setTimeout(() => {
+        const u = simListeners[Math.floor(Math.random() * simListeners.length)];
+        if (!u) return;
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+        const reply = {
+          _mid: Date.now() + "-sim-" + i + "-" + CLIENT_ID,
+          user: u.user,
+          ip: u.ip,
+          status: u.status,
+          mine: false,
+          text: SIM_REPLIES[Math.floor(Math.random() * SIM_REPLIES.length)],
+          time: timeStr,
+          replyTo: { user: myMsg.user, text: myMsg.text.slice(0, 30) }
+        };
+        for (const era in ARCHIVE_DATA) {
+          const s = ARCHIVE_DATA[era].songs.find(x => x.id === songId);
+          if (s && s.chats) s.chats.push(reply);
+        }
+        persistChat(songId, reply);
+        if (bc) bc.postMessage({ type: "chat", songId, msg: reply });
+        if (songId === getActiveSong().id) renderChats();
+      }, 2500 + Math.random() * 5000);
+    }
+  }
+
   // DOM 节点引用
   const eraList = document.getElementById("eraList");
   const songList = document.getElementById("songList");
@@ -68,8 +330,11 @@
   const sliceCaption = document.getElementById("sliceCaption");
   const sliceAuthor = document.getElementById("sliceAuthor");
   const sliceIndicators = document.getElementById("sliceIndicators");
+  const sliceLikeBtn = document.getElementById("sliceLikeBtn");
+  const sliceLikeCount = document.getElementById("sliceLikeCount");
 
   const chatBox = document.getElementById("chatBox");
+  const lyricsBg = document.getElementById("lyricsBg");
   const chatForm = document.getElementById("chatForm");
   const chatInput = document.getElementById("chatInput");
   const listenerBadge = document.getElementById("listenerBadge");
@@ -101,7 +366,7 @@
 
   function renderSongs() {
     const era = ARCHIVE_DATA[currentEraKey];
-    sidebarTitle.textContent = `${era.name} · 曲目`;
+    sidebarTitle.textContent = `${era.name} · Tracks`;
     songList.innerHTML = era.songs.map((song, idx) => {
       const activeClass = idx === currentSongIndex ? "active" : "";
       return `
@@ -118,10 +383,11 @@
     const slices = song.slices;
     if (!slices || slices.length === 0) {
       sliceImg.src = "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1000";
-      sliceLocation.textContent = "暂无取景地记忆";
-      sliceCaption.textContent = "这首歌尚在等待第一位上传打卡回忆的粉丝。";
+      sliceLocation.textContent = "No memories pinned yet";
+      sliceCaption.textContent = "This song is still waiting for the first ARMY to share a memory.";
       sliceAuthor.textContent = "by ARMY";
       sliceIndicators.innerHTML = "";
+      sliceLikeBtn.hidden = true;
       return;
     }
 
@@ -135,29 +401,68 @@
       <span class="indicator-dot ${i === (currentSliceIndex % slices.length) ? 'active' : ''}"></span>
     `).join("");
 
+    // 点赞状态
+    const sid = getSliceSid(current, song.id);
+    sliceLikeBtn.hidden = false;
+    sliceLikeCount.textContent = likeCount(sid, current.likes);
+    sliceLikeBtn.classList.toggle("liked", loadLikedSet().has(sid));
+
     playerTitle.textContent = song.title;
     playerMeta.textContent = song.album;
   }
 
   function renderChats() {
     const song = getActiveSong();
-    chatBox.innerHTML = (song.chats || []).map(chat => `
-      <div class="chat-bubble">
-        <div class="user-meta">
-          <span>${chat.user}</span>
-          <span class="time-stamp">${chat.time}</span>
+    chatBox.innerHTML = (song.chats || []).map((chat, i) => {
+      const avatar = escapeText((chat.user || "?").trim().charAt(0).toUpperCase());
+      const status = chat.status ? ` · ${escapeText(chat.status)}` : "";
+      const ipLine = chat.ip
+        ? `<span class="msg-ip">📍IP ${escapeText(chat.ip)}${status}</span>`
+        : "";
+      const replyHtml = chat.replyTo
+        ? `<div class="reply-quote">↩ Replying to @${escapeText(chat.replyTo.user)}: ${escapeText(chat.replyTo.text)}</div>`
+        : "";
+      const replyBtn = chat.mine
+        ? ""
+        : `<button type="button" class="reply-btn" data-idx="${i}">Reply</button>`;
+      return `
+        <div class="chat-msg${chat.mine ? " mine" : ""}">
+          <div class="msg-avatar">${avatar}</div>
+          <div class="msg-body">
+            <div class="msg-sender">${escapeText(chat.user)}<span class="time-stamp">${escapeText(chat.time)}</span></div>
+            <div class="msg-bubble">${replyHtml}<div class="user-text">${escapeText(chat.text)}</div></div>
+            <div class="msg-footer">${ipLine}${replyBtn}</div>
+          </div>
         </div>
-        <div class="user-text">${chat.text}</div>
-      </div>
-    `).join("");
+      `;
+    }).join("");
     chatBox.scrollTop = chatBox.scrollHeight;
-
-    // 随机微调在线听歌人数
-    const base = 1200 + Math.floor(Math.random() * 200);
-    listenerBadge.textContent = base.toLocaleString();
+    renderLiveStatus();
+    updateLyricsBackground(song);
   }
 
   // Spotify Embed 播放器（替代 Web Audio 合成音）
+  // 可达性探测：浏览器对加载失败的 iframe 也会触发 load 事件，无法直接检测，
+  // 因此先加载 Spotify favicon 图片探测网络连通性，不通时直接走 iTunes 回退
+  function checkSpotifyReachable() {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const timer = setTimeout(() => {
+        img.src = "";
+        resolve(false);
+      }, 3000);
+      img.onload = () => {
+        clearTimeout(timer);
+        resolve(true);
+      };
+      img.onerror = () => {
+        clearTimeout(timer);
+        resolve(false);
+      };
+      img.src = `https://open.spotify.com/favicon.ico?t=${Date.now()}`;
+    });
+  }
+
   function loadSpotifyEmbed(spotifyId) {
     spotifyEmbedWrapper.innerHTML = `
       <iframe
@@ -175,16 +480,20 @@
   }
 
   // iTunes Search API 回退：按歌名动态搜索 30 秒官方试听（免费、无需密钥）
-  async function loadItunesPreview(song) {
+  async function loadItunesPreview(song, fromFallback = false) {
+    spotifyEmbedWrapper.innerHTML = '<p class="spotify-fallback">🎵 Loading audio...</p>';
     try {
       const term = encodeURIComponent(`BTS ${song.title.replace(/\s*\(.*\)$/, "")}`);
       const res = await fetch(`https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=10`);
       const data = await res.json();
       const hit = data.results.find(r => r.artistName === "BTS") || data.results[0];
       if (hit && hit.previewUrl) {
+        const label = fromFallback
+          ? "🎧 30s preview · iTunes (Spotify unreachable, switched automatically)"
+          : "🎧 30s preview · iTunes";
         spotifyEmbedWrapper.innerHTML = `
           <div class="itunes-fallback">
-            <span class="itunes-label">🎧 30s 试听 · iTunes</span>
+            <span class="itunes-label">${label}</span>
             <audio controls preload="none" src="${hit.previewUrl}"></audio>
           </div>
         `;
@@ -193,16 +502,241 @@
     } catch (e) {
       console.error("iTunes search error:", e);
     }
-    spotifyEmbedWrapper.innerHTML = '<p class="spotify-fallback">🎵 此曲目暂无可用音源</p>';
+    spotifyEmbedWrapper.innerHTML = '<p class="spotify-fallback">🎵 No audio source available for this track</p>';
+  }
+
+  // 网易云音乐外链播放器（国内直接可用，官方外链功能）
+  function loadNeteaseEmbed(neteaseId) {
+    spotifyEmbedWrapper.innerHTML = `
+      <iframe
+        frameborder="no"
+        border="0"
+        marginwidth="0"
+        marginheight="0"
+        width="100%"
+        height="86"
+        src="https://music.163.com/outchain/player?type=2&id=${neteaseId}&auto=0&height=66"
+        title="NetEase Player"
+      ></iframe>
+    `;
+  }
+
+  // ---------- 本地音源自定义播放器（个人使用，文件不入库不上线） ----------
+  function probeOne(src) {
+    return new Promise((resolve) => {
+      const probe = new Audio();
+      const timer = setTimeout(() => { cleanup(); resolve(null); }, 2500);
+      const cleanup = () => {
+        clearTimeout(timer);
+        probe.removeEventListener("canplay", onOk);
+        probe.removeEventListener("error", onErr);
+      };
+      const onOk = () => { cleanup(); resolve(src); };
+      const onErr = () => { cleanup(); resolve(null); };
+      probe.addEventListener("canplay", onOk);
+      probe.addEventListener("error", onErr);
+      probe.preload = "metadata";
+      probe.src = src;
+    });
+  }
+
+  async function probeLocalAudio(song) {
+    for (const ext of AUDIO_EXTS) {
+      const src = await probeOne(`assets/music/${song.id}.${ext}`);
+      if (src) return src;
+    }
+    return null;
+  }
+
+  function fmtTime(sec) {
+    if (!isFinite(sec)) return "00:00";
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+
+  function showCustomPlayer(src) {
+    if (audioEl) audioEl.pause();
+    audioEl = new Audio(src);
+    localPlaying = false;
+    localPlayBtn.textContent = "▶";
+    progressBar.style.width = "0%";
+    timeLabel.textContent = "00:00 / 00:00";
+    customPlayer.hidden = false;
+    spotifyEmbedWrapper.hidden = true;
+    qqLinkBtn.hidden = true;
+
+    // 元数据加载完成后立即显示总时长（修复总时长一直 00:00 的问题）
+    audioEl.addEventListener("loadedmetadata", () => {
+      timeLabel.textContent = `00:00 / ${fmtTime(audioEl.duration)}`;
+    });
+    audioEl.addEventListener("timeupdate", () => {
+      const pct = audioEl.duration ? (audioEl.currentTime / audioEl.duration) * 100 : 0;
+      progressBar.style.width = pct + "%";
+      timeLabel.textContent = `${fmtTime(audioEl.currentTime)} / ${fmtTime(audioEl.duration)}`;
+    });
+    audioEl.addEventListener("ended", () => {
+      localPlaying = false;
+      localPlayBtn.textContent = "▶";
+      progressBar.style.width = "0%";
+      timeLabel.textContent = "00:00 / " + fmtTime(audioEl.duration);
+    });
+  }
+
+  function stopLocalAudio() {
+    if (audioEl) {
+      audioEl.pause();
+      audioEl = null;
+    }
+    localPlaying = false;
+    customPlayer.hidden = true;
+  }
+
+  function initLocalPlayerEvents() {
+    localPlayBtn.addEventListener("click", () => {
+      if (!audioEl) return;
+      if (localPlaying) {
+        audioEl.pause();
+        localPlayBtn.textContent = "▶";
+      } else {
+        audioEl.play();
+        localPlayBtn.textContent = "⏸";
+      }
+      localPlaying = !localPlaying;
+    });
+
+    // 进度条：点击 + 按住拖动跳转
+    let dragging = false;
+
+    function seekTo(clientX) {
+      if (!audioEl || !audioEl.duration) return;
+      const rect = progressWrap.getBoundingClientRect();
+      const ratio = Math.min(Math.max((clientX - rect.left) / rect.width, 0), 1);
+      audioEl.currentTime = ratio * audioEl.duration;
+      progressBar.style.width = ratio * 100 + "%";
+      timeLabel.textContent = `${fmtTime(audioEl.currentTime)} / ${fmtTime(audioEl.duration)}`;
+    }
+
+    progressWrap.addEventListener("pointerdown", (e) => {
+      if (!audioEl || !audioEl.duration) return;
+      dragging = true;
+      progressWrap.classList.add("dragging");
+      progressWrap.setPointerCapture(e.pointerId);
+      seekTo(e.clientX);
+    });
+    progressWrap.addEventListener("pointermove", (e) => {
+      if (dragging) seekTo(e.clientX);
+    });
+    progressWrap.addEventListener("pointerup", () => {
+      dragging = false;
+      progressWrap.classList.remove("dragging");
+    });
+    progressWrap.addEventListener("pointercancel", () => {
+      dragging = false;
+      progressWrap.classList.remove("dragging");
+    });
+  }
+
+  // ---------- 本地歌词面板（个人使用：assets/lyrics/local-lyrics.js，不入 Git 不上线） ----------
+  function escapeText(s) {
+    return String(s).replace(/[&<>"]/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])
+    );
+  }
+
+  function loadLyricsScript() {
+    return new Promise((resolve) => {
+      if (window.LOCAL_LYRICS) return resolve();
+      const s = document.createElement("script");
+      s.src = "assets/lyrics/local-lyrics.js";
+      s.onload = () => resolve();
+      s.onerror = () => resolve(); // 文件不存在时静默跳过
+      document.head.appendChild(s);
+    });
+  }
+
+  async function updateLyricsUI(song) {
+    await loadLyricsScript();
+    const text = (window.LOCAL_LYRICS || {})[song.id];
+    lyricsBtn.hidden = !text;
+    if (!text) {
+      lyricsPanel.hidden = true;
+      return;
+    }
+    lyricsPanel.innerHTML = text
+      .split(/\r?\n/)
+      .map((line) => `<p>${escapeText(line) || "&nbsp;"}</p>`)
+      .join("");
+  }
+
+  function initLyricsEvents() {
+    lyricsBtn.addEventListener("click", () => {
+      lyricsPanel.hidden = !lyricsPanel.hidden;
+    });
+  }
+
+  // 聊天室滚动歌词背景：有本地歌词时铺在底层缓慢上滚
+  async function updateLyricsBackground(song) {
+    if (!lyricsBg) return;
+    await loadLyricsScript();
+    const text = (window.LOCAL_LYRICS || {})[song.id];
+    if (!text) {
+      lyricsBg.hidden = true;
+      lyricsBg.innerHTML = "";
+      return;
+    }
+    const lines = text
+      .split(/\r?\n/)
+      .map((line) => `<p>${escapeText(line) || "&nbsp;"}</p>`)
+      .join("");
+    // 内容复制两份做无缝循环滚动
+    lyricsBg.innerHTML = `<div class="lyrics-bg-scroll">${lines}${lines}</div>`;
+    lyricsBg.hidden = false;
   }
 
   async function updateSpotifyPlayer() {
     const song = getActiveSong();
-    if (song.spotifyId) {
-      loadSpotifyEmbed(song.spotifyId);
-    } else {
-      await loadItunesPreview(song);
+
+    // 1) 优先本地音源（完整版，个人使用）
+    const localSrc = await probeLocalAudio(song);
+    if (localSrc) {
+      showCustomPlayer(localSrc);
+      updateLyricsUI(song);
+      return;
     }
+
+    // 2) 本地无文件 → 第三方嵌入链
+    stopLocalAudio();
+    spotifyEmbedWrapper.hidden = false;
+    spotifyEmbedWrapper.innerHTML = '<p class="spotify-fallback">🎵 Loading audio...</p>';
+
+    if (song.spotifyId) {
+      const reachable = await checkSpotifyReachable();
+      if (reachable) {
+        loadSpotifyEmbed(song.spotifyId);
+        updateLyricsUI(song);
+        return;
+      }
+    }
+
+    // Spotify 不可用 → 网易云 → QQ 音乐改为跳转按钮（嵌入页会跳转，弃用 iframe）→ iTunes 试听
+    if (song.neteaseId) {
+      loadNeteaseEmbed(song.neteaseId);
+      updateLyricsUI(song);
+      return;
+    }
+    if (song.qqmusicSrc) {
+      spotifyEmbedWrapper.innerHTML = `
+        <div class="qq-link-fallback">
+          <span>🎵 For the full version, open this song in QQ Music</span>
+          <a href="${song.qqmusicSrc}" target="_blank" rel="noopener">Open in QQ Music ↗</a>
+        </div>
+      `;
+      updateLyricsUI(song);
+      return;
+    }
+    await loadItunesPreview(song, Boolean(song.spotifyId));
+    updateLyricsUI(song);
   }
 
   function startAutoSlide() {
@@ -232,27 +766,52 @@
     renderChats();
   });
 
-  // 发送聊天消息
+  // 发送聊天消息（带昵称、IP属地、回复引用，并同步到其他标签页）
   chatForm.addEventListener("submit", e => {
     e.preventDefault();
     const msg = chatInput.value.trim();
     if (!msg) return;
 
+    const song = getActiveSong();
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-    const newChat = { user: "我 (ARMY)", text: msg, time: timeStr };
+    const newChat = {
+      _mid: Date.now() + "-" + CLIENT_ID,
+      user: (myProfile && myProfile.nick) || "GuestARMY",
+      ip: myProfile ? myProfile.ip : "Unknown",
+      status: myProfile ? myProfile.status : "",
+      mine: true,
+      text: msg,
+      time: timeStr,
+      replyTo: replyTarget || null
+    };
 
-    const song = getActiveSong();
+    replyTarget = null;
+    replyIndicator.hidden = true;
     song.chats.push(newChat);
-
-    // 持久化存储聊天
-    let storedChats = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) || "{}");
-    if (!storedChats[song.id]) storedChats[song.id] = [];
-    storedChats[song.id].push(newChat);
-    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(storedChats));
+    persistChat(song.id, newChat);
+    if (bc) bc.postMessage({ type: "chat", songId: song.id, msg: newChat });
 
     chatInput.value = "";
     renderChats();
+    scheduleSimReplies(song.id, newChat);
+  });
+
+  // 回复：点击气泡上的"回复"按钮
+  chatBox.addEventListener("click", e => {
+    const btn = e.target.closest(".reply-btn");
+    if (!btn) return;
+    const chat = getActiveSong().chats[parseInt(btn.dataset.idx, 10)];
+    if (!chat) return;
+    replyTarget = { user: chat.user, text: chat.text.slice(0, 30) };
+    replyTargetName.textContent = chat.user;
+    replyIndicator.hidden = false;
+    chatInput.focus();
+  });
+
+  cancelReplyBtn.addEventListener("click", () => {
+    replyTarget = null;
+    replyIndicator.hidden = true;
   });
 
   // 应援互动
@@ -264,7 +823,10 @@
     setTimeout(() => cheerBtn.style.transform = "scale(1)", 150);
   });
 
-  // 初始化时加载第一首歌的 Spotify 播放器
+  // 初始化：绑定播放器/歌词事件并加载第一首歌
+  initLocalPlayerEvents();
+  initLyricsEvents();
+  initProfileFeature();
   updateSpotifyPlayer();
 
   eraList.addEventListener("click", e => {
@@ -313,6 +875,19 @@
     }
   });
 
+  // 给当前切片点赞 / 取消点赞
+  sliceLikeBtn.addEventListener("click", () => {
+    const song = getActiveSong();
+    const slices = song.slices;
+    if (!slices || !slices.length) return;
+    const slice = slices[currentSliceIndex % slices.length];
+    const sid = getSliceSid(slice, song.id);
+    const newCount = toggleLike(sid, slice.likes);
+    sliceLikeCount.textContent = newCount;
+    sliceLikeBtn.classList.toggle("liked", loadLikedSet().has(sid));
+    if (bc) bc.postMessage({ type: "like", sid, count: newCount });
+  });
+
   openUploadBtn.addEventListener("click", () => uploadModal.showModal());
   const closeModal = () => { uploadModal.close(); uploadForm.reset(); };
   closeUploadBtn.addEventListener("click", closeModal);
@@ -322,6 +897,8 @@
     e.preventDefault();
     const song = getActiveSong();
     const newSlice = {
+      sid: "up-" + Date.now().toString(36) + "-" + CLIENT_ID,
+      likes: 0,
       location: document.getElementById("formLocation").value.trim(),
       image: document.getElementById("formImage").value.trim(),
       author: document.getElementById("formAuthor").value.trim(),
