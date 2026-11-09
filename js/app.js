@@ -541,11 +541,11 @@
   }
 
   async function probeLocalAudio(song) {
-    for (const ext of AUDIO_EXTS) {
-      const src = await probeOne(`assets/music/${song.id}.${ext}`);
-      if (src) return src;
-    }
-    return null;
+    // 并行探测所有扩展名，总耗时上限为单个探测超时（2.5s），而不是串行累加
+    const results = await Promise.all(
+      AUDIO_EXTS.map((ext) => probeOne(`assets/music/${song.id}.${ext}`))
+    );
+    return results.find(Boolean) || null;
   }
 
   function fmtTime(sec) {
@@ -705,6 +705,11 @@
   async function updateSpotifyPlayer() {
     const song = getActiveSong();
 
+    // 立即给出加载反馈，避免底部空白
+    stopLocalAudio();
+    spotifyEmbedWrapper.hidden = false;
+    spotifyEmbedWrapper.innerHTML = '<p class="spotify-fallback">🎵 Loading audio...</p>';
+
     // 1) 优先本地音源（完整版，个人使用）
     const localSrc = await probeLocalAudio(song);
     if (localSrc) {
@@ -714,7 +719,6 @@
     }
 
     // 2) 本地无文件 → 第三方嵌入链
-    stopLocalAudio();
     spotifyEmbedWrapper.hidden = false;
     spotifyEmbedWrapper.innerHTML = '<p class="spotify-fallback">🎵 Loading audio...</p>';
 
