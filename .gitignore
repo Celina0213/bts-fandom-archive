@@ -12,6 +12,5 @@ desktop.ini
 *.log
 tmp/
 
-# 个人本地音源与歌词（版权内容，仅限本机使用，严禁提交/上传）
-assets/music/
+# 个人本地歌词（版权内容，仅限本机使用，严禁提交/上传）
 assets/lyrics/
