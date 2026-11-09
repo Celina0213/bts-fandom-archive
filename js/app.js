@@ -568,8 +568,22 @@
     qqLinkBtn.hidden = true;
 
     // 元数据加载完成后立即显示总时长（修复总时长一直 00:00 的问题）
+    let scanningDuration = false;
     audioEl.addEventListener("loadedmetadata", () => {
       customPlayer.hidden = false; // 音频确认可播放，才显示播放条
+      // 部分浏览器对无 Xing 头的 mp3 会把 duration 报成 Infinity，
+      // 导致进度百分比永远为 0、进度条不动。跳跃到极大时间强制浏览器扫描全文件计算真实时长。
+      if (audioEl.duration === Infinity) {
+        scanningDuration = true;
+        audioEl.currentTime = 1e101;
+        audioEl.addEventListener("timeupdate", function scanDur() {
+          audioEl.removeEventListener("timeupdate", scanDur);
+          audioEl.currentTime = 0;
+          scanningDuration = false;
+          timeLabel.textContent = `00:00 / ${fmtTime(audioEl.duration)}`;
+        });
+        return;
+      }
       timeLabel.textContent = `00:00 / ${fmtTime(audioEl.duration)}`;
     });
     // 音频加载失败（如线上部署没有本地音源）→ 隐藏播放条并回退第三方
@@ -579,9 +593,11 @@
       updateSpotifyPlayer();
     });
     audioEl.addEventListener("timeupdate", () => {
-      const pct = audioEl.duration ? (audioEl.currentTime / audioEl.duration) * 100 : 0;
+      if (scanningDuration) return; // 时长扫描期间跳过刷新
+      const d = audioEl.duration;
+      const pct = d && isFinite(d) && d > 0 ? (audioEl.currentTime / d) * 100 : 0;
       progressBar.style.width = pct + "%";
-      timeLabel.textContent = `${fmtTime(audioEl.currentTime)} / ${fmtTime(audioEl.duration)}`;
+      timeLabel.textContent = `${fmtTime(audioEl.currentTime)} / ${fmtTime(d)}`;
     });
     audioEl.addEventListener("ended", () => {
       localPlaying = false;
@@ -617,7 +633,7 @@
     let dragging = false;
 
     function seekTo(clientX) {
-      if (!audioEl || !audioEl.duration) return;
+      if (!audioEl || !audioEl.duration || !isFinite(audioEl.duration)) return;
       const rect = progressWrap.getBoundingClientRect();
       const ratio = Math.min(Math.max((clientX - rect.left) / rect.width, 0), 1);
       audioEl.currentTime = ratio * audioEl.duration;
