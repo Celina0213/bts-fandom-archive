@@ -562,13 +562,21 @@
     localPlayBtn.textContent = "▶";
     progressBar.style.width = "0%";
     timeLabel.textContent = "00:00 / 00:00";
-    customPlayer.hidden = false;
+    // 先隐藏，等音频元数据加载成功后才显示（防止出现无法播放的空播放条）
+    customPlayer.hidden = true;
     spotifyEmbedWrapper.hidden = true;
     qqLinkBtn.hidden = true;
 
     // 元数据加载完成后立即显示总时长（修复总时长一直 00:00 的问题）
     audioEl.addEventListener("loadedmetadata", () => {
+      customPlayer.hidden = false; // 音频确认可播放，才显示播放条
       timeLabel.textContent = `00:00 / ${fmtTime(audioEl.duration)}`;
+    });
+    // 音频加载失败（如线上部署没有本地音源）→ 隐藏播放条并回退第三方
+    audioEl.addEventListener("error", () => {
+      if (!audioEl) return;
+      stopLocalAudio();
+      updateSpotifyPlayer();
     });
     audioEl.addEventListener("timeupdate", () => {
       const pct = audioEl.duration ? (audioEl.currentTime / audioEl.duration) * 100 : 0;
