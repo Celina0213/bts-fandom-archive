@@ -2076,6 +2076,24 @@ body {
   color: var(--text-muted);
 }
 
+.derby-newround-btn {
+  margin-top: 1rem;
+  padding: 0.55rem 1.4rem;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--primary-purple), #6c4dc4);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.derby-newround-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(124, 92, 255, 0.45);
+}
+
 .derby-footer {
   display: flex;
   justify-content: space-between;

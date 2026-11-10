@@ -565,6 +565,7 @@
   const derbyLastWinner = document.getElementById("derbyLastWinner");
   const derbyRaceNo = document.getElementById("derbyRaceNo");
   const derbyStepsLabel = document.getElementById("derbyStepsLabel");
+  const derbyNewRoundBtn = document.getElementById("derbyNewRoundBtn");
 
   function getActiveSong() {
     return ARCHIVE_DATA[currentEraKey].songs[currentSongIndex];
@@ -1515,8 +1516,8 @@
   }
 
   function showDerbyWinner(status) {
-    derbyWinnerEmoji.textContent = "🏆";
-    derbyWinnerName.textContent = status;
+    derbyWinnerEmoji.textContent = DERBY_EMOJI[status] || "🏆";
+    derbyWinnerName.textContent = status || "Unknown";
     derbyWinner.hidden = false;
   }
 
@@ -1535,6 +1536,8 @@
   }
 
   function resetDerby(winner) {
+    // 清掉待执行的倒计时（手动点击"Start New Round"时防止重复重开）
+    if (derbyResetTimer) { clearTimeout(derbyResetTimer); derbyResetTimer = null; }
     const raceNo = (derbyState.raceNo || 1) + 1;
     derbyState = freshDerbyState();
     derbyState.raceNo = raceNo;
@@ -1598,6 +1601,11 @@
     const s = STATUS_OPTIONS[Math.floor(Math.random() * STATUS_OPTIONS.length)];
     derbyMoveFor(s);
   }, 3000);
+
+  // 获胜卡片上的"立即开新局"按钮
+  derbyNewRoundBtn.addEventListener("click", () => {
+    if (derbyState && derbyState.winner) resetDerby(derbyState.winner);
+  });
 
   // ---------- 3D 视差背景：鼠标跟随倾斜（rAF 节流，触屏/无鼠标设备跳过） ----------
   const bg3d = document.querySelector(".bg-3d");
