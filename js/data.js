@@ -51,7 +51,7 @@
             sid: "ineedu-gasstation",
             likes: 218,
             location: "Seoul · Abandoned Gas Station",
-            image: "https://images.unsplash.com/photo-1527018607636-0567e9b04877?w=1000&auto=format&fit=crop",
+            image: "https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=1000&auto=format&fit=crop",
             caption: "The confusion, the running and the growing pains of adolescence — the true starting point of the HYYH narrative universe.",
             author: "Kookie_97"
           }

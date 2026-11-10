@@ -591,6 +591,11 @@
     }
 
     const current = slices[currentSliceIndex % slices.length];
+    // 图源失效时自动回退到默认城市夜景，避免出现裂图
+    sliceImg.onerror = () => {
+      sliceImg.onerror = null; // 防止回退图也失效时死循环
+      sliceImg.src = "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1000";
+    };
     sliceImg.src = current.image;
     sliceLocation.textContent = current.location;
     sliceCaption.textContent = current.caption;
