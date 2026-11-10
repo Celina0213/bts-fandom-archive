@@ -371,13 +371,15 @@
           allCmts[d.sliceSid].push(d.comment);
           saveComments(allCmts);
         }
-        // 如果当前正在评论区视图，实时刷新
+        // 如果正在群聊列表视图，刷新列表；同时刷新切片下方评论面板
         if (commentsContainer.style.display !== "none") renderSliceComments();
+        renderSliceCommentsPanel();
         updateSliceCommentsBadge();
       } else if (d.type === "group-create" && d.group) {
         const groups = loadGroups();
         groups[d.group.gid] = d.group;
         saveGroups(groups);
+        if (commentsContainer.style.display !== "none") renderSliceComments();
         if (activeGroup && activeGroup.gid === d.group.gid) {
           activeGroup = d.group;
           renderGroupChatUI();
@@ -388,6 +390,7 @@
         if (g && !g.members.includes(d.member)) {
           g.members.push(d.member);
           saveGroups(groups);
+          if (commentsContainer.style.display !== "none") renderSliceComments();
           if (activeGroup && activeGroup.gid === d.gid) {
             activeGroup = g;
             renderGroupMembers();
@@ -538,8 +541,12 @@
   const subtabCommentsBtn = document.getElementById("subtabCommentsBtn");
   const commentsContainer = document.getElementById("commentsContainer");
   const commentsList = document.getElementById("commentsList");
-  const commentsSongTitle = document.getElementById("commentsSongTitle");
   const sliceCommentsBadge = document.getElementById("sliceCommentsBadge");
+  const sliceCommentsPanel = document.getElementById("sliceCommentsPanel");
+  const sliceCommentsCount = document.getElementById("sliceCommentsCount");
+  const sliceCommentsList = document.getElementById("sliceCommentsList");
+  const sliceCommentForm = document.getElementById("sliceCommentForm");
+  const sliceCommentInput = document.getElementById("sliceCommentInput");
 
   // Group chat
   const groupChatModal = document.getElementById("groupChatModal");
@@ -586,6 +593,8 @@
       sliceAuthor.textContent = "by ARMY";
       sliceIndicators.innerHTML = "";
       sliceLikeBtn.hidden = true;
+      sliceCommentsPanel.hidden = true;
+      sliceCommentsBadge.hidden = true;
       return;
     }
 
@@ -605,8 +614,9 @@
     sliceLikeCount.textContent = likeCount(sid, current.likes);
     sliceLikeBtn.classList.toggle("liked", loadLikedSet().has(sid));
 
-    // 评论状态徽章
+    // 评论状态徽章 + 切片下方评论面板
     updateSliceCommentsBadge();
+    renderSliceCommentsPanel();
 
     playerTitle.textContent = song.title;
     playerMeta.textContent = song.album;
@@ -642,156 +652,168 @@
     updateLyricsBackground(song);
   }
 
-  // ---------- 切片评论区渲染 ----------
+  // ---------- 切片评论：直接显示在切片下方 ----------
   let commentReplyTarget = null; // 当前正在回复的评论 {user, text, _cid}
 
-  function renderSliceComments() {
+  // 找到或创建某切片的讨论群（发布者邀请评论者时调用）
+  function findOrCreateGroup(sliceSid, sliceAuthor, inviteeName) {
+    const groups = loadGroups();
+    let group = Object.values(groups).find(g =>
+      g.createdForSlice === sliceSid && g.createdBy === sliceAuthor
+    );
+    if (group) {
+      inviteToGroup(group.gid, inviteeName);
+    } else {
+      group = createGroup(sliceSid, sliceAuthor, inviteeName);
+    }
+    return group;
+  }
+
+  // 渲染当前切片下方的评论面板
+  function renderSliceCommentsPanel() {
     const song = getActiveSong();
-    commentsSongTitle.textContent = song.title;
     const slices = song.slices || [];
+    if (!slices.length) { sliceCommentsPanel.hidden = true; return; }
+    const current = slices[currentSliceIndex % slices.length];
+    const sid = getSliceSid(current, song.id);
+    const comments = getSliceComments(sid);
+    const isPublisher = myProfile && myProfile.nick === current.author;
 
-    // 筛选允许评论的切片
-    const commentableSlices = slices.filter(s => s.commentsAllowed !== false);
+    sliceCommentsPanel.hidden = false;
+    sliceCommentsCount.textContent = comments.length;
 
-    if (commentableSlices.length === 0) {
+    // 发布者关闭了评论
+    if (current.commentsAllowed === false) {
+      sliceCommentsList.innerHTML = `<p class="no-comments-yet">🔒 The publisher disabled comments on this memory.</p>`;
+      sliceCommentForm.style.display = "none";
+      return;
+    }
+    sliceCommentForm.style.display = "flex";
+
+    if (comments.length === 0) {
+      sliceCommentsList.innerHTML = `<p class="no-comments-yet">No comments yet. Be the first to share!</p>`;
+    } else {
+      sliceCommentsList.innerHTML = comments.map((c, i) => {
+        const avatar = escapeText((c.user || "?").trim().charAt(0).toUpperCase());
+        const replyHtml = c.replyTo
+          ? `<div class="reply-quote">↩ Replying to @${escapeText(c.replyTo.user)}: ${escapeText(c.replyTo.text)}</div>`
+          : "";
+        // 只有发布者能拉人进群
+        const inviteBtn = isPublisher && !c.mine
+          ? `<button type="button" class="invite-btn" data-invite-user="${escapeText(c.user)}">+ Invite to Group</button>`
+          : "";
+        const replyBtn = !c.mine
+          ? `<button type="button" class="reply-btn c-reply-btn" data-cidx="${i}">Reply</button>`
+          : "";
+        return `
+          <div class="comment-msg${c.mine ? " mine" : ""}">
+            <div class="msg-avatar">${avatar}</div>
+            <div class="msg-body">
+              <div class="msg-sender">${escapeText(c.user)}<span class="time-stamp">${escapeText(c.time)}</span></div>
+              <div class="msg-bubble">${replyHtml}<div class="user-text">${escapeText(c.text)}</div></div>
+              <div class="msg-footer">${inviteBtn}<span class="msg-ip">📍${escapeText(c.ip)}</span>${replyBtn}</div>
+            </div>
+          </div>`;
+      }).join("");
+    }
+
+    sliceCommentInput.placeholder = commentReplyTarget
+      ? `Replying to @${commentReplyTarget.user}...`
+      : "Share your thoughts on this memory...";
+  }
+
+  // 评论面板事件（事件委托，只绑定一次）
+  sliceCommentForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const song = getActiveSong();
+    const slices = song.slices || [];
+    if (!slices.length) return;
+    const current = slices[currentSliceIndex % slices.length];
+    if (current.commentsAllowed === false) return;
+    const text = sliceCommentInput.value.trim();
+    if (!text) return;
+    postComment(getSliceSid(current, song.id), text, commentReplyTarget);
+    commentReplyTarget = null;
+    sliceCommentInput.value = "";
+    renderSliceCommentsPanel();
+  });
+
+  sliceCommentsList.addEventListener("click", e => {
+    const song = getActiveSong();
+    const slices = song.slices || [];
+    if (!slices.length) return;
+    const current = slices[currentSliceIndex % slices.length];
+    const sid = getSliceSid(current, song.id);
+
+    // 回复评论
+    const replyBtn = e.target.closest(".c-reply-btn");
+    if (replyBtn) {
+      const comments = getSliceComments(sid);
+      const target = comments[parseInt(replyBtn.dataset.cidx, 10)];
+      if (target) {
+        commentReplyTarget = { user: target.user, text: target.text.slice(0, 40), _cid: target._cid };
+        renderSliceCommentsPanel();
+        sliceCommentInput.focus();
+      }
+      return;
+    }
+
+    // 发布者邀请评论者入群
+    const inviteBtn = e.target.closest(".invite-btn");
+    if (inviteBtn) {
+      const invitee = inviteBtn.dataset.inviteUser;
+      const group = findOrCreateGroup(sid, current.author, invitee);
+      inviteBtn.textContent = "✓ Invited";
+      inviteBtn.disabled = true;
+      openGroupChat(group.gid);
+    }
+  });
+
+  // ---------- "Group Chats" 标签页：展示发布者从评论拉人建的群 ----------
+  function renderSliceComments() {
+    const myNick = myProfile && myProfile.nick;
+    const groups = Object.values(loadGroups()).filter(g =>
+      g.createdBy === myNick || (myNick && g.members.includes(myNick))
+    );
+
+    if (groups.length === 0) {
       commentsList.innerHTML = `
         <div class="comments-empty">
-          <p>📝 No memory slices allow comments yet.</p>
-          <p class="muted">Publishers can enable comments when sharing their memories.</p>
+          <p>👥 No group chats yet.</p>
+          <p class="muted">Slice publishers can invite commenters into a group discussion from the comments under a slice.</p>
         </div>`;
       return;
     }
 
-    commentsList.innerHTML = commentableSlices.map((slice, idx) => {
-      const sid = getSliceSid(slice, song.id);
-      const comments = getSliceComments(sid);
-      const isPublisher = myProfile && myProfile.nick === slice.author;
-
+    commentsList.innerHTML = groups.map(g => {
+      const now = Date.now();
+      const presence = g.memberPresence || {};
+      const onlineCount = g.members.filter(n => presence[n] && now - presence[n] < 30000).length;
+      const lastMsg = (g.messages && g.messages.length)
+        ? g.messages[g.messages.length - 1]
+        : null;
+      const preview = lastMsg ? `${escapeText(lastMsg.user)}: ${escapeText(lastMsg.text.slice(0, 40))}` : "No messages yet";
       return `
-        <div class="comment-slice-card" data-slice-sid="${sid}">
-          <div class="comment-slice-header">
-            <img class="comment-slice-thumb" src="${escapeText(slice.image)}" alt="" loading="lazy">
-            <div class="comment-slice-meta">
-              <span class="comment-slice-location">${escapeText(slice.location)}</span>
-              <span class="comment-slice-author">by ${escapeText(slice.author)}</span>
-            </div>
-            <span class="comment-count-badge">${comments.length} 💬</span>
+        <div class="group-card" data-gid="${g.gid}">
+          <div class="group-card-avatar">${escapeText((g.name || "?").charAt(0).toUpperCase())}</div>
+          <div class="group-card-info">
+            <span class="group-card-name">${escapeText(g.name)}</span>
+            <span class="group-card-preview">${preview}</span>
           </div>
-          <div class="comment-slice-body">
-            ${renderCommentsForSlice(sid, comments, isPublisher, slice.author)}
+          <div class="group-card-meta">
+            <span class="group-card-members">${g.members.length} members</span>
+            <span class="group-card-online">${onlineCount} online</span>
           </div>
-          <form class="comment-form" data-target-sid="${sid}">
-            <input type="text" placeholder="Share your thoughts on this memory..." maxlength="200" autocomplete="off" required>
-            <button type="submit" class="btn-primary btn-sm">Comment</button>
-          </form>
-        </div>`;
-    }).join("");
-
-    // 绑定评论区事件
-    bindCommentEvents();
-  }
-
-  function renderCommentsForSlice(sliceSid, comments, isPublisher, sliceAuthor) {
-    if (comments.length === 0) {
-      return `<p class="no-comments-yet">No comments yet. Be the first to share!</p>`;
-    }
-    return comments.map((c, i) => {
-      const avatar = escapeText((c.user || "?").trim().charAt(0).toUpperCase());
-      const replyHtml = c.replyTo
-        ? `<div class="reply-quote">↩ Replying to @${escapeText(c.replyTo.user)}: ${escapeText(c.replyTo.text)}</div>`
-        : "";
-      const inviteBtn = isPublisher && !c.mine
-        ? `<button type="button" class="invite-btn" data-invite-user="${escapeText(c.user)}" data-slice-sid="${sliceSid}">+ Invite to Group</button>`
-        : "";
-      const replyBtn = !c.mine
-        ? `<button type="button" class="reply-btn c-reply-btn" data-cidx="${i}" data-slice-sid="${sliceSid}">Reply</button>`
-        : "";
-      return `
-        <div class="comment-msg${c.mine ? " mine" : ""}">
-          <div class="msg-avatar">${avatar}</div>
-          <div class="msg-body">
-            <div class="msg-sender">${escapeText(c.user)}<span class="time-stamp">${escapeText(c.time)}</span></div>
-            <div class="msg-bubble">${replyHtml}<div class="user-text">${escapeText(c.text)}</div></div>
-            <div class="msg-footer">
-              ${inviteBtn}<span class="msg-ip">📍${escapeText(c.ip)}</span>${replyBtn}
-            </div>
-          </div>
+          <button type="button" class="btn-primary btn-sm group-open-btn">Open</button>
         </div>`;
     }).join("");
   }
 
-  function bindCommentEvents() {
-    // 发表评论表单
-    commentsList.querySelectorAll(".comment-form").forEach(form => {
-      form.addEventListener("submit", e => {
-        e.preventDefault();
-        const input = form.querySelector("input");
-        const text = input.value.trim();
-        if (!text) return;
-        const sliceSid = form.dataset.targetSid;
-        postComment(sliceSid, text, commentReplyTarget);
-        input.value = "";
-        commentReplyTarget = null;
-        renderSliceComments();
-        // 同步更新切片上的评论数徽章
-        updateSliceCommentsBadge();
-      });
-    });
-
-    // 回复按钮
-    commentsList.querySelectorAll(".c-reply-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const cidx = parseInt(btn.dataset.cidx, 10);
-        const sliceSid = btn.dataset.sliceSid;
-        const comments = getSliceComments(sliceSid);
-        const target = comments[cidx];
-        if (!target) return;
-        commentReplyTarget = { user: target.user, text: target.text.slice(0, 40), _cid: target._cid };
-        // 高亮显示正在回复
-        btn.textContent = "↩ Replying...";
-        btn.disabled = true;
-        setTimeout(() => { btn.textContent = "Reply"; btn.disabled = false; }, 3000);
-        // 滚动到对应表单
-        const card = btn.closest(".comment-slice-card");
-        const form = card.querySelector(".comment-form");
-        form.querySelector("input").focus();
-        form.querySelector("input").placeholder = `Replying to @${target.user}...`;
-      });
-    });
-
-    // 邀请入群按钮
-    commentsList.querySelectorAll(".invite-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const invitee = btn.dataset.inviteUser;
-        const sliceSid = btn.dataset.sliceSid;
-        // 查找或创建该切片的群
-        const song = getActiveSong();
-        const slices = song.slices || [];
-        const slice = slices.find(s => getSliceSid(s, song.id) === sliceSid);
-        if (!slice) return;
-
-        const groups = loadGroups();
-        // 找已有群（同一发布者、同一切片）
-        let group = Object.values(groups).find(g =>
-          g.createdForSlice === sliceSid && g.createdBy === slice.author
-        );
-
-        if (group) {
-          // 已有群，直接邀请
-          inviteToGroup(group.gid, invitee);
-        } else {
-          // 创建新群
-          group = createGroup(sliceSid, slice.author, invitee);
-        }
-
-        // 打开群聊窗口
-        openGroupChat(group.gid);
-        btn.textContent = "✓ Invited";
-        btn.disabled = true;
-        setTimeout(() => { btn.textContent = "+ Invite to Group"; btn.disabled = false; }, 3000);
-      });
-    });
-  }
+  // 群卡片点击 → 打开群聊窗口（事件委托，只绑定一次）
+  commentsList.addEventListener("click", e => {
+    const card = e.target.closest(".group-card");
+    if (card) openGroupChat(card.dataset.gid);
+  });
 
   // 更新切片视图上的评论数徽章
   function updateSliceCommentsBadge() {

@@ -984,6 +984,120 @@ body {
   filter: brightness(1.15);
 }
 
+/* ---------- 切片下方评论面板 ---------- */
+.slice-comments-panel {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-glass);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.slice-comments-header {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  border-bottom: 1px dashed var(--border-glass);
+  padding-bottom: 0.45rem;
+}
+
+.slice-comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 0.3rem;
+}
+
+.slice-comments-list .comment-msg {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.slice-comments-list .comment-msg.mine {
+  flex-direction: row-reverse;
+}
+
+.slice-comments-list .msg-body {
+  max-width: 80%;
+}
+
+/* ---------- Group Chats 标签页卡片 ---------- */
+.group-card {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-glass);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.group-card:hover {
+  border-color: var(--primary-purple);
+  background: rgba(124, 92, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.group-card-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--primary-purple), #6c4dc4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.group-card-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 0.15rem;
+}
+
+.group-card-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.group-card-preview {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.group-card-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.group-card-online {
+  color: #06d6a0;
+}
+
+.group-open-btn {
+  flex-shrink: 0;
+}
+
 /* ---------- 歌词按钮与面板 ---------- */
 .lyrics-toggle {
   background: transparent;

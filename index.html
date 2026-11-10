@@ -41,7 +41,7 @@
       <!-- Lounge sub-tabs (only visible when in chat mode) -->
       <div class="lounge-subtabs" id="loungeSubtabs" style="display: none;">
         <button class="subtab-btn active" id="subtabLiveBtn">⚡ Live Discussion</button>
-        <button class="subtab-btn" id="subtabCommentsBtn">📝 Slice Comments</button>
+        <button class="subtab-btn" id="subtabCommentsBtn">👥 Group Chats</button>
       </div>
 
       <!-- Live status bar: how many are listening to this song right now, and what they are doing -->
@@ -68,6 +68,18 @@
           <button class="ctrl-btn" id="prevSlice" title="Previous">◀</button>
           <div class="slice-indicators" id="sliceIndicators"></div>
           <button class="ctrl-btn" id="nextSlice" title="Next">▶</button>
+        </div>
+
+        <!-- Per-slice comments panel (comments live directly under the published slice) -->
+        <div class="slice-comments-panel" id="sliceCommentsPanel">
+          <div class="slice-comments-header">
+            <span>💬 Comments (<span id="sliceCommentsCount">0</span>)</span>
+          </div>
+          <div class="slice-comments-list" id="sliceCommentsList"></div>
+          <form class="comment-form" id="sliceCommentForm">
+            <input type="text" id="sliceCommentInput" placeholder="Share your thoughts on this memory..." maxlength="200" autocomplete="off" required>
+            <button type="submit" class="btn-primary btn-sm">Comment</button>
+          </form>
         </div>
 
         <div class="upload-trigger-area">
@@ -101,13 +113,13 @@
         </form>
       </div>
 
-      <!-- Mode C: Slice Comments (non-real-time, per-slice discussion) -->
+      <!-- Mode C: Group Chats (created by publishers inviting commenters) -->
       <div class="comments-container" id="commentsContainer" style="display: none;">
         <div class="comments-header">
-          <span>💬 Discuss memory slices for "<span id="commentsSongTitle"></span>"</span>
+          <span>👥 Group discussions you belong to</span>
         </div>
         <div class="comments-list" id="commentsList">
-          <!-- Dynamically rendered: one card per slice that allows comments -->
+          <!-- Dynamically rendered: group chat cards -->
         </div>
       </div>
     </section>
