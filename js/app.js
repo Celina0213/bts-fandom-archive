@@ -1382,4 +1382,22 @@
   renderSongs();
   renderSlice();
   startAutoSlide();
+
+  // ---------- 3D 视差背景：鼠标跟随倾斜（rAF 节流，触屏/无鼠标设备跳过） ----------
+  const bg3d = document.querySelector(".bg-3d");
+  if (bg3d && window.matchMedia("(pointer: fine)").matches) {
+    let bgRaf = null;
+    window.addEventListener("mousemove", e => {
+      if (bgRaf) return;
+      bgRaf = requestAnimationFrame(() => {
+        bgRaf = null;
+        const mx = (e.clientX / window.innerWidth - 0.5) * 2;   // -1 ~ 1
+        const my = (e.clientY / window.innerHeight - 0.5) * 2;
+        bg3d.style.setProperty("--tiltX", (-my * 2.4).toFixed(2) + "deg");
+        bg3d.style.setProperty("--tiltY", (mx * 2.4).toFixed(2) + "deg");
+        bg3d.style.setProperty("--mx", mx.toFixed(3));
+        bg3d.style.setProperty("--my", my.toFixed(3));
+      });
+    }, { passive: true });
+  }
 });

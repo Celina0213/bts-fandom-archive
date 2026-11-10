@@ -43,6 +43,60 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ---------- 3D 视差背景（壁纸 + 光晕 + 暗角三层） ---------- */
+.bg-3d {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  perspective: 900px;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--bg-primary);
+}
+
+.bg-3d-layer {
+  position: absolute;
+  inset: -6%;
+  will-change: transform;
+}
+
+.bg-3d-photo {
+  background: url("../assets/images/bts-wallpaper.jpg") center 32% / cover no-repeat;
+  transform: rotateX(var(--tiltX, 0deg)) rotateY(var(--tiltY, 0deg)) scale(1.12);
+  transition: transform 0.4s cubic-bezier(0.2, 0.6, 0.3, 1);
+  filter: brightness(0.85) saturate(0.92);
+  animation: bgDrift 46s ease-in-out infinite alternate;
+}
+
+/* 缓慢漂移，让静止页面也有呼吸感 */
+@keyframes bgDrift {
+  0%   { transform: rotateX(var(--tiltX, 0deg)) rotateY(var(--tiltY, 0deg)) scale(1.12) translate(0, 0); }
+  50%  { transform: rotateX(var(--tiltX, 0deg)) rotateY(var(--tiltY, 0deg)) scale(1.15) translate(-1.2%, 0.8%); }
+  100% { transform: rotateX(var(--tiltX, 0deg)) rotateY(var(--tiltY, 0deg)) scale(1.12) translate(0.9%, -0.6%); }
+}
+
+/* 紫色光晕层：视差幅度比照片大，制造前后景深 */
+.bg-3d-glow {
+  background:
+    radial-gradient(55% 45% at 28% 18%, rgba(155, 93, 229, 0.20), transparent 70%),
+    radial-gradient(48% 42% at 76% 72%, rgba(94, 60, 180, 0.18), transparent 70%),
+    radial-gradient(40% 35% at 55% 45%, rgba(255, 209, 102, 0.05), transparent 70%);
+  transform: translate3d(calc(var(--mx, 0) * 26px), calc(var(--my, 0) * 26px), 0);
+  transition: transform 0.5s ease-out;
+  mix-blend-mode: screen;
+}
+
+/* 暗角层：压暗四周，保证前景文字可读 */
+.bg-3d-vignette {
+  background:
+    linear-gradient(180deg, rgba(10, 8, 20, 0.42) 0%, rgba(10, 8, 20, 0.22) 35%, rgba(10, 8, 20, 0.82) 100%),
+    radial-gradient(130% 100% at 50% 40%, transparent 55%, rgba(10, 8, 20, 0.55) 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-3d-photo { animation: none; }
+}
+
 .app-header {
   display: flex;
   justify-content: space-between;
