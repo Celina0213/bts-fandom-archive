@@ -688,7 +688,7 @@
       sliceCommentsList.innerHTML = comments.map((c, i) => {
         const avatar = escapeText((c.user || "?").trim().charAt(0).toUpperCase());
         const replyHtml = c.replyTo
-          ? `<div class="reply-quote">↩ Replying to @${escapeText(c.replyTo.user)}: ${escapeText(c.replyTo.text)}</div>`
+          ? `<div class="fp-quote">↩ <b>@${escapeText(c.replyTo.user)}</b>: ${escapeText(c.replyTo.text)}</div>`
           : "";
         // 只有发布者能拉人进群
         const inviteBtn = isPublisher && !c.mine
@@ -698,14 +698,18 @@
           ? `<button type="button" class="reply-btn c-reply-btn" data-cidx="${i}">Reply</button>`
           : "";
         return `
-          <div class="comment-msg${c.mine ? " mine" : ""}">
-            <div class="msg-avatar">${avatar}</div>
-            <div class="msg-body">
-              <div class="msg-sender">${escapeText(c.user)}<span class="time-stamp">${escapeText(c.time)}</span></div>
-              <div class="msg-bubble">${replyHtml}<div class="user-text">${escapeText(c.text)}</div></div>
-              <div class="msg-footer">${inviteBtn}<span class="msg-ip">📍${escapeText(c.ip)}</span>${replyBtn}</div>
+          <article class="forum-post${c.mine ? " fp-mine" : ""}">
+            <div class="fp-avatar">${avatar}</div>
+            <div class="fp-main">
+              <header class="fp-head">
+                <span class="fp-user">${escapeText(c.user)}</span>
+                <span class="fp-floor">#${i + 1}</span>
+                <span class="fp-time">${escapeText(c.time)}</span>
+              </header>
+              <div class="fp-content">${replyHtml}<p>${escapeText(c.text)}</p></div>
+              <footer class="fp-actions">${inviteBtn}<span class="fp-ip">📍${escapeText(c.ip)}</span>${replyBtn}</footer>
             </div>
-          </div>`;
+          </article>`;
       }).join("");
     }
 
