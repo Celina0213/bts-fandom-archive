@@ -1556,12 +1556,12 @@
   buildDerbyBoard();
   renderDerbyMeta();
 
-  // 环境模拟：每 ~3 秒一位"粉丝"加入，随机状态队伍走一步（页面隐藏时暂停，避免堆积跳跃）
+  // 环境模拟：每 ~10 秒一位"粉丝"加入，随机状态队伍走一步（页面隐藏时暂停，避免堆积跳跃）
   setInterval(() => {
     if (document.hidden || !derbyState) return;
     const s = STATUS_OPTIONS[Math.floor(Math.random() * STATUS_OPTIONS.length)];
     derbyMoveFor(s);
-  }, 3000);
+  }, 10000);
 
   // ---------- 3D 视差背景：鼠标跟随倾斜（rAF 节流，触屏/无鼠标设备跳过） ----------
   const bg3d = document.querySelector(".bg-3d");
