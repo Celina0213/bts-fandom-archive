@@ -371,8 +371,8 @@
           allCmts[d.sliceSid].push(d.comment);
           saveComments(allCmts);
         }
-        // 如果当前在评论区，刷新
-        if (!commentsContainer.hidden) renderSliceComments();
+        // 如果当前正在评论区视图，实时刷新
+        if (commentsContainer.style.display !== "none") renderSliceComments();
         updateSliceCommentsBadge();
       } else if (d.type === "group-create" && d.group) {
         const groups = loadGroups();
@@ -1337,6 +1337,7 @@
       renderSongs();
       renderSlice();
       renderChats();
+      if (commentsContainer.style.display !== "none") renderSliceComments();
       updateSpotifyPlayer();
       startAutoSlide();
     }
@@ -1350,6 +1351,7 @@
       renderSongs();
       renderSlice();
       renderChats();
+      if (commentsContainer.style.display !== "none") renderSliceComments();
       updateSpotifyPlayer();
       startAutoSlide();
     }
