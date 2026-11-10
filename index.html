@@ -38,11 +38,6 @@
         <button class="tab-btn" id="tabChatBtn">💬 Listening Lounge (<span id="listenerBadge">--</span>)</button>
       </div>
 
-      <!-- Lounge sub-tabs (only visible when in chat mode) -->
-      <div class="lounge-subtabs" id="loungeSubtabs" style="display: none;">
-        <button class="subtab-btn active" id="subtabLiveBtn">⚡ Live Discussion</button>
-        <button class="subtab-btn" id="subtabCommentsBtn">👥 Group Chats</button>
-      </div>
 
       <!-- Live status bar: how many are listening to this song right now, and what they are doing -->
       <div class="live-status-bar" id="liveStatusBar">
@@ -111,16 +106,6 @@
           <input type="text" id="chatInput" placeholder="Share how this song makes you feel right now..." maxlength="100" autocomplete="off" required>
           <button type="submit" class="btn-primary">Send</button>
         </form>
-      </div>
-
-      <!-- Mode C: Group Chats (created by publishers inviting commenters) -->
-      <div class="comments-container" id="commentsContainer" style="display: none;">
-        <div class="comments-header">
-          <span>👥 Group discussions you belong to</span>
-        </div>
-        <div class="comments-list" id="commentsList">
-          <!-- Dynamically rendered: group chat cards -->
-        </div>
       </div>
     </section>
   </main>
