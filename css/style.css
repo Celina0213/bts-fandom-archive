@@ -2038,6 +2038,12 @@ body {
   background: rgba(10, 8, 20, 0.55);
   backdrop-filter: blur(4px);
   z-index: 5;
+}
+
+/* hidden 属性必须显式生效，否则被上面的 display:flex 覆盖 */
+.derby-winner[hidden] {
+  display: none !important;
+}
   animation: fadeIn 0.4s ease-out;
 }
 
