@@ -1429,7 +1429,14 @@
   };
   // 棋子图片映射：等图片文件就位后填入，如 "Listening": "assets/images/derby/listening.png"
   // 未填的状态自动使用 emoji 占位棋子
-  const DERBY_PIECE_IMG = {};
+  const DERBY_PIECE_IMG = {
+    "Listening": "assets/images/derby/listening.jpg",
+    "Sleeping": "assets/images/derby/sleeping.jpg",
+    "Studying": "assets/images/derby/studying.jpg",
+    "Eating": "assets/images/derby/eating.jpg",
+    "Slacking off": "assets/images/derby/slacking.jpg",
+    "Daydreaming": "assets/images/derby/daydreaming.jpg"
+  };
   let derbyState = null;
   const derbyPieceEls = {};
   const derbyCountEls = {};
