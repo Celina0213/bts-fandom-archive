@@ -343,6 +343,8 @@
       if (d.type === "presence" && d.id !== CLIENT_ID) {
         peers.set(d.id, { profile: d.profile, ts: d.ts });
         renderLiveStatus();
+        // 新听众加入 → 其状态队伍走一步棋
+        derbyMoveFor(d.profile && d.profile.status);
       } else if (d.type === "chat" && d.songId && d.msg) {
         for (const era in ARCHIVE_DATA) {
           const s = ARCHIVE_DATA[era].songs.find(x => x.id === d.songId);
@@ -393,6 +395,9 @@
             renderGroupMembers();
           }
         }
+      } else if (d.type === "derby" && d.state) {
+        // 其他标签页同步赛马棋状态
+        applyRemoteDerby(d.state);
       } else if (d.type === "group-msg" && d.gid && d.msg) {
         const groups = loadGroups();
         const g = groups[d.gid];
@@ -548,6 +553,18 @@
   const groupChatForm = document.getElementById("groupChatForm");
   const groupChatInput = document.getElementById("groupChatInput");
   const groupMembersBar = document.getElementById("groupMembersBar");
+
+  // Status Derby（状态赛马棋）
+  const tabDerbyBtn = document.getElementById("tabDerbyBtn");
+  const derbyContainer = document.getElementById("derbyContainer");
+  const derbyBoard = document.getElementById("derbyBoard");
+  const derbyWinner = document.getElementById("derbyWinner");
+  const derbyWinnerEmoji = document.getElementById("derbyWinnerEmoji");
+  const derbyWinnerName = document.getElementById("derbyWinnerName");
+  const derbyCountdown = document.getElementById("derbyCountdown");
+  const derbyLastWinner = document.getElementById("derbyLastWinner");
+  const derbyRaceNo = document.getElementById("derbyRaceNo");
+  const derbyStepsLabel = document.getElementById("derbyStepsLabel");
 
   function getActiveSong() {
     return ARCHIVE_DATA[currentEraKey].songs[currentSongIndex];
@@ -1207,16 +1224,29 @@
   tabSliceBtn.addEventListener("click", () => {
     tabSliceBtn.classList.add("active");
     tabChatBtn.classList.remove("active");
+    tabDerbyBtn.classList.remove("active");
     sliceContainer.style.display = "flex";
     chatContainer.style.display = "none";
+    derbyContainer.style.display = "none";
   });
 
   tabChatBtn.addEventListener("click", () => {
     tabChatBtn.classList.add("active");
     tabSliceBtn.classList.remove("active");
+    tabDerbyBtn.classList.remove("active");
     sliceContainer.style.display = "none";
     chatContainer.style.display = "flex";
+    derbyContainer.style.display = "none";
     renderChats();
+  });
+
+  tabDerbyBtn.addEventListener("click", () => {
+    tabDerbyBtn.classList.add("active");
+    tabSliceBtn.classList.remove("active");
+    tabChatBtn.classList.remove("active");
+    sliceContainer.style.display = "none";
+    chatContainer.style.display = "none";
+    derbyContainer.style.display = "flex";
   });
 
   // 发送聊天消息（带昵称、IP属地、回复引用，并同步到其他标签页）
@@ -1387,6 +1417,180 @@
   renderSongs();
   renderSlice();
   startAutoSlide();
+
+  // ---------- Status Derby（3D 状态赛马棋） ----------
+  // 规则：每个状态是一支队伍；每有一位该状态的听众加入，队伍棋子前进一格；
+  //      先到达终点（🏁）的队伍获胜，展示 5 秒后自动重开一局。
+  const DERBY_KEY = "army_echoes_derby";
+  const DERBY_STEPS = 15;
+  const DERBY_EMOJI = {
+    "Listening": "🎧", "Sleeping": "😴", "Studying": "📚",
+    "Eating": "🍜", "Slacking off": "😜", "Daydreaming": "🌙"
+  };
+  // 棋子图片映射：等图片文件就位后填入，如 "Listening": "assets/images/derby/listening.png"
+  // 未填的状态自动使用 emoji 占位棋子
+  const DERBY_PIECE_IMG = {};
+  let derbyState = null;
+  const derbyPieceEls = {};
+  const derbyCountEls = {};
+  let derbyResetTimer = null;
+
+  function freshDerbyState() {
+    const pos = {};
+    STATUS_OPTIONS.forEach(s => { pos[s] = 0; });
+    return { pos, raceNo: 1, lastWinner: null, winner: null, finishedAt: 0 };
+  }
+
+  function loadDerbyState() {
+    try { return JSON.parse(localStorage.getItem(DERBY_KEY) || "null"); } catch (e) { return null; }
+  }
+
+  function saveDerbyState() {
+    localStorage.setItem(DERBY_KEY, JSON.stringify(derbyState));
+  }
+
+  function derbyPieceHTML(status) {
+    const img = DERBY_PIECE_IMG[status];
+    if (img) {
+      return `<img src="${escapeText(img)}" alt="${escapeText(status)}"
+        onerror="this.outerHTML='<div class=&quot;derby-piece-fallback&quot;>${DERBY_EMOJI[status] || "🎲"}</div>'">`;
+    }
+    return `<div class="derby-piece-fallback">${DERBY_EMOJI[status] || "🎲"}</div>`;
+  }
+
+  function buildDerbyBoard() {
+    derbyBoard.innerHTML = "";
+    Object.keys(derbyPieceEls).forEach(k => delete derbyPieceEls[k]);
+    Object.keys(derbyCountEls).forEach(k => delete derbyCountEls[k]);
+    STATUS_OPTIONS.forEach(status => {
+      const lane = document.createElement("div");
+      lane.className = "derby-lane";
+      lane.innerHTML = `
+        <div class="derby-team">
+          <span class="derby-team-emoji">${DERBY_EMOJI[status] || "🎲"}</span>
+          <span class="derby-team-name">${escapeText(status)}</span>
+          <span class="derby-team-count"></span>
+        </div>
+        <div class="derby-track">
+          <div class="derby-piece">${derbyPieceHTML(status)}</div>
+        </div>`;
+      derbyBoard.appendChild(lane);
+      derbyPieceEls[status] = lane.querySelector(".derby-piece");
+      derbyCountEls[status] = lane.querySelector(".derby-team-count");
+      updateDerbyPiece(status, false);
+      updateDerbyTeamCount(status);
+    });
+  }
+
+  function updateDerbyPiece(status, hop) {
+    const el = derbyPieceEls[status];
+    if (!el || !derbyState) return;
+    const p = Math.min(derbyState.pos[status] || 0, DERBY_STEPS);
+    el.style.left = (p / DERBY_STEPS) * 100 + "%";
+    const leading = p > 0 && STATUS_OPTIONS.every(s => (derbyState.pos[s] || 0) <= p);
+    el.classList.toggle("leading", leading);
+    if (hop) {
+      el.classList.remove("hop");
+      void el.offsetWidth; // 重启动画
+      el.classList.add("hop");
+    }
+  }
+
+  function updateDerbyTeamCount(status) {
+    const el = derbyCountEls[status];
+    if (el && derbyState) el.textContent = `×${derbyState.pos[status] || 0}`;
+  }
+
+  function renderDerbyMeta() {
+    if (!derbyState) return;
+    derbyRaceNo.textContent = derbyState.raceNo;
+    derbyLastWinner.textContent = derbyState.lastWinner || "—";
+  }
+
+  function showDerbyWinner(status) {
+    derbyWinnerEmoji.textContent = "🏆";
+    derbyWinnerName.textContent = status;
+    derbyWinner.hidden = false;
+  }
+
+  function scheduleDerbyReset(duration = 5000) {
+    if (derbyResetTimer) { clearTimeout(derbyResetTimer); derbyResetTimer = null; }
+    const end = Date.now() + duration;
+    const tick = setInterval(() => {
+      const left = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+      derbyCountdown.textContent = left;
+      if (left <= 0) clearInterval(tick);
+    }, 250);
+    derbyResetTimer = setTimeout(() => {
+      clearInterval(tick);
+      resetDerby(derbyState.winner);
+    }, duration);
+  }
+
+  function resetDerby(winner) {
+    const raceNo = (derbyState.raceNo || 1) + 1;
+    derbyState = freshDerbyState();
+    derbyState.raceNo = raceNo;
+    derbyState.lastWinner = winner || null;
+    saveDerbyState();
+    if (bc) bc.postMessage({ type: "derby", state: derbyState });
+    derbyWinner.hidden = true;
+    renderDerbyMeta();
+    STATUS_OPTIONS.forEach(s => { updateDerbyPiece(s, false); updateDerbyTeamCount(s); });
+  }
+
+  function derbyMoveFor(status) {
+    if (!status || !derbyState || derbyState.winner) return;
+    if (!(status in derbyState.pos)) return; // 未知状态不参与
+    derbyState.pos[status] += 1;
+    updateDerbyPiece(status, true);
+    updateDerbyTeamCount(status);
+    if (derbyState.pos[status] >= DERBY_STEPS) {
+      derbyState.winner = status;
+      derbyState.finishedAt = Date.now();
+      showDerbyWinner(status);
+      scheduleDerbyReset();
+    }
+    saveDerbyState();
+    if (bc) bc.postMessage({ type: "derby", state: derbyState });
+  }
+
+  function applyRemoteDerby(remote) {
+    if (!remote || !remote.pos) return;
+    derbyState = remote;
+    if (derbyState.winner) {
+      showDerbyWinner(derbyState.winner);
+      const remain = 5000 - (Date.now() - derbyState.finishedAt);
+      if (remain <= 0) { resetDerby(derbyState.winner); return; }
+      scheduleDerbyReset(remain);
+    } else {
+      derbyWinner.hidden = true;
+      if (derbyResetTimer) { clearTimeout(derbyResetTimer); derbyResetTimer = null; }
+    }
+    renderDerbyMeta();
+    STATUS_OPTIONS.forEach(s => { updateDerbyPiece(s, false); updateDerbyTeamCount(s); });
+  }
+
+  // 初始化棋盘
+  derbyStepsLabel.textContent = DERBY_STEPS;
+  derbyState = loadDerbyState();
+  if (!derbyState || !derbyState.pos) derbyState = freshDerbyState();
+  // 上次获胜后未及重开（如页面关闭）→ 直接开新局
+  if (derbyState.winner && Date.now() - derbyState.finishedAt > 5000) {
+    const prevRaceNo = derbyState.raceNo || 1;
+    derbyState.lastWinner = derbyState.winner;
+    derbyState = freshDerbyState();
+    derbyState.raceNo = prevRaceNo + 1;
+  }
+  buildDerbyBoard();
+  renderDerbyMeta();
+
+  // 环境模拟：每 ~3 秒一位"粉丝"加入，随机状态队伍走一步（页面隐藏时暂停，避免堆积跳跃）
+  setInterval(() => {
+    if (document.hidden || !derbyState || derbyState.winner) return;
+    const s = STATUS_OPTIONS[Math.floor(Math.random() * STATUS_OPTIONS.length)];
+    derbyMoveFor(s);
+  }, 3000);
 
   // ---------- 3D 视差背景：鼠标跟随倾斜（rAF 节流，触屏/无鼠标设备跳过） ----------
   const bg3d = document.querySelector(".bg-3d");

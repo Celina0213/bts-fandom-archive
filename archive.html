@@ -42,6 +42,7 @@
       <div class="view-switch">
         <button class="tab-btn active" id="tabSliceBtn">📸 Memory Slices</button>
         <button class="tab-btn" id="tabChatBtn">💬 Listening Lounge (<span id="listenerBadge">--</span>)</button>
+        <button class="tab-btn" id="tabDerbyBtn">🎲 Status Derby</button>
       </div>
 
 
@@ -112,6 +113,28 @@
           <input type="text" id="chatInput" placeholder="Share how this song makes you feel right now..." maxlength="100" autocomplete="off" required>
           <button type="submit" class="btn-primary">Send</button>
         </form>
+      </div>
+
+      <!-- Mode C: Status Derby — 3D board race driven by live listeners -->
+      <div class="derby-container" id="derbyContainer" style="display: none;">
+        <div class="derby-header">
+          <span class="derby-title">🎲 Status Derby</span>
+          <span class="derby-sub">Every fan who joins advances their status team. First to <b id="derbyStepsLabel">15</b> wins!</span>
+        </div>
+        <div class="derby-stage">
+          <div class="derby-board" id="derbyBoard"><!-- lanes rendered by JS --></div>
+          <div class="derby-winner" id="derbyWinner" hidden>
+            <div class="derby-winner-card">
+              <p class="derby-winner-emoji" id="derbyWinnerEmoji">🏆</p>
+              <p class="derby-winner-text"><b id="derbyWinnerName"></b> team wins the race!</p>
+              <p class="derby-winner-sub">New round starting in <span id="derbyCountdown">5</span>s…</p>
+            </div>
+          </div>
+        </div>
+        <div class="derby-footer">
+          <span>Last winner: <b id="derbyLastWinner">—</b></span>
+          <span>Race #<span id="derbyRaceNo">1</span></span>
+        </div>
       </div>
     </section>
   </main>
@@ -226,7 +249,7 @@
     </div>
   </dialog>
 
-  <script src="js/data.js?v=20261111a"></script>
-  <script src="js/app.js?v=20261111a"></script>
+  <script src="js/data.js?v=20261111b"></script>
+  <script src="js/app.js?v=20261111b"></script>
 </body>
 </html>
