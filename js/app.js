@@ -458,6 +458,7 @@
         ip: profileIpSelect.value,
         status: profileStatusSelect.value
       });
+      derbyMoveFor(profileStatusSelect.value); // 真实登录：该状态队伍前进一格
       applyProfileUI();
       renderLiveStatus();
       broadcastPresence();
@@ -1420,10 +1421,10 @@
   startAutoSlide();
 
   // ---------- Status Derby（3D 状态赛马棋） ----------
-  // 规则：每个状态是一支队伍；每有一位该状态的听众加入，队伍棋子前进一格；
-  //      先到达终点（🏁）的队伍获胜，展示 5 秒后自动重开一局。
+  // 规则：每个状态是一支队伍；每有一位真实用户登录（Home Page 或站内资料），
+  //      其所选状态的队伍前进一格；先到达终点（🏁）的队伍获胜并立即重开一局。
   const DERBY_KEY = "army_echoes_derby";
-  const DERBY_STEPS = 15;
+  const DERBY_STEPS = 30;
   const DERBY_EMOJI = {
     "Listening": "🎧", "Sleeping": "😴", "Studying": "📚",
     "Eating": "🍜", "Slacking off": "😜", "Daydreaming": "🌙"
@@ -1556,12 +1557,14 @@
   buildDerbyBoard();
   renderDerbyMeta();
 
-  // 环境模拟：每 ~10 秒一位"粉丝"加入，随机状态队伍走一步（页面隐藏时暂停，避免堆积跳跃）
-  setInterval(() => {
-    if (document.hidden || !derbyState) return;
-    const s = STATUS_OPTIONS[Math.floor(Math.random() * STATUS_OPTIONS.length)];
-    derbyMoveFor(s);
-  }, 10000);
+  // 真实登录驱动：从 Home Page 登录跳转过来时，其状态队伍走一步
+  try {
+    if (sessionStorage.getItem("army_echoes_just_signed_in")) {
+      sessionStorage.removeItem("army_echoes_just_signed_in");
+      if (!myProfile) loadProfile();
+      if (myProfile && myProfile.status) derbyMoveFor(myProfile.status);
+    }
+  } catch (e) { /* sessionStorage 不可用时忽略 */ }
 
   // ---------- 3D 视差背景：鼠标跟随倾斜（rAF 节流，触屏/无鼠标设备跳过） ----------
   const bg3d = document.querySelector(".bg-3d");
