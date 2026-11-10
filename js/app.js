@@ -1515,51 +1515,19 @@
     derbyLastWinner.textContent = derbyState.lastWinner || "—";
   }
 
-  function showDerbyWinner(status) {
-    derbyWinnerEmoji.textContent = DERBY_EMOJI[status] || "🏆";
-    derbyWinnerName.textContent = status || "Unknown";
-    derbyWinner.hidden = false;
-  }
-
-  function scheduleDerbyReset(duration = 5000) {
-    if (derbyResetTimer) { clearTimeout(derbyResetTimer); derbyResetTimer = null; }
-    const end = Date.now() + duration;
-    const tick = setInterval(() => {
-      const left = Math.max(0, Math.ceil((end - Date.now()) / 1000));
-      derbyCountdown.textContent = left;
-      if (left <= 0) clearInterval(tick);
-    }, 250);
-    derbyResetTimer = setTimeout(() => {
-      clearInterval(tick);
-      resetDerby(derbyState.winner);
-    }, duration);
-  }
-
-  function resetDerby(winner) {
-    // 清掉待执行的倒计时（手动点击"Start New Round"时防止重复重开）
-    if (derbyResetTimer) { clearTimeout(derbyResetTimer); derbyResetTimer = null; }
-    const raceNo = (derbyState.raceNo || 1) + 1;
-    derbyState = freshDerbyState();
-    derbyState.raceNo = raceNo;
-    derbyState.lastWinner = winner || null;
-    saveDerbyState();
-    if (bc) bc.postMessage({ type: "derby", state: derbyState });
-    derbyWinner.hidden = true;
-    renderDerbyMeta();
-    STATUS_OPTIONS.forEach(s => { updateDerbyPiece(s, false); updateDerbyTeamCount(s); });
-  }
-
   function derbyMoveFor(status) {
-    if (!status || !derbyState || derbyState.winner) return;
+    if (!status || !derbyState) return;
     if (!(status in derbyState.pos)) return; // 未知状态不参与
     derbyState.pos[status] += 1;
     updateDerbyPiece(status, true);
     updateDerbyTeamCount(status);
     if (derbyState.pos[status] >= DERBY_STEPS) {
-      derbyState.winner = status;
-      derbyState.finishedAt = Date.now();
-      showDerbyWinner(status);
-      scheduleDerbyReset();
+      // 冠军产生：不弹胜利界面，记录冠军后直接开新局
+      derbyState.lastWinner = status;
+      derbyState.raceNo = (derbyState.raceNo || 1) + 1;
+      STATUS_OPTIONS.forEach(s => { derbyState.pos[s] = 0; });
+      renderDerbyMeta();
+      STATUS_OPTIONS.forEach(s => { updateDerbyPiece(s, false); updateDerbyTeamCount(s); });
     }
     saveDerbyState();
     if (bc) bc.postMessage({ type: "derby", state: derbyState });
@@ -1568,15 +1536,7 @@
   function applyRemoteDerby(remote) {
     if (!remote || !remote.pos) return;
     derbyState = remote;
-    if (derbyState.winner) {
-      showDerbyWinner(derbyState.winner);
-      const remain = 5000 - (Date.now() - derbyState.finishedAt);
-      if (remain <= 0) { resetDerby(derbyState.winner); return; }
-      scheduleDerbyReset(remain);
-    } else {
-      derbyWinner.hidden = true;
-      if (derbyResetTimer) { clearTimeout(derbyResetTimer); derbyResetTimer = null; }
-    }
+    derbyWinner.hidden = true;
     renderDerbyMeta();
     STATUS_OPTIONS.forEach(s => { updateDerbyPiece(s, false); updateDerbyTeamCount(s); });
   }
@@ -1585,34 +1545,23 @@
   derbyStepsLabel.textContent = DERBY_STEPS;
   derbyState = loadDerbyState();
   if (!derbyState || !derbyState.pos) derbyState = freshDerbyState();
-  // 上次获胜后未及重开（如页面关闭）→ 直接开新局
-  if (derbyState.winner && Date.now() - derbyState.finishedAt > 5000) {
-    const prevRaceNo = derbyState.raceNo || 1;
+  // 清理旧版本遗留的获胜状态（现在没有胜利界面，获胜即重开）
+  if (derbyState.winner) {
     derbyState.lastWinner = derbyState.winner;
-    derbyState = freshDerbyState();
-    derbyState.raceNo = prevRaceNo + 1;
+    derbyState.winner = null;
+    derbyState.finishedAt = 0;
+    STATUS_OPTIONS.forEach(s => { derbyState.pos[s] = 0; });
+    derbyState.raceNo = (derbyState.raceNo || 1) + 1;
   }
   buildDerbyBoard();
   renderDerbyMeta();
 
   // 环境模拟：每 ~3 秒一位"粉丝"加入，随机状态队伍走一步（页面隐藏时暂停，避免堆积跳跃）
   setInterval(() => {
-    if (document.hidden || !derbyState || derbyState.winner) return;
+    if (document.hidden || !derbyState) return;
     const s = STATUS_OPTIONS[Math.floor(Math.random() * STATUS_OPTIONS.length)];
     derbyMoveFor(s);
   }, 3000);
-
-  // 获胜卡片上的"立即开新局"按钮
-  derbyNewRoundBtn.addEventListener("click", () => {
-    if (derbyState && derbyState.winner) resetDerby(derbyState.winner);
-  });
-
-  // 看门狗：任何原因导致获胜后 6 秒仍未重开（如重开定时器丢失），强制开新局
-  setInterval(() => {
-    if (derbyState && derbyState.winner && Date.now() - derbyState.finishedAt > 6000) {
-      resetDerby(derbyState.winner);
-    }
-  }, 1000);
 
   // ---------- 3D 视差背景：鼠标跟随倾斜（rAF 节流，触屏/无鼠标设备跳过） ----------
   const bg3d = document.querySelector(".bg-3d");
