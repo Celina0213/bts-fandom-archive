@@ -610,6 +610,26 @@ body {
   color: var(--text-muted);
 }
 
+.form-group-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.form-group-row label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.form-group-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary-purple);
+}
+
 .form-group input, .form-group textarea {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--border-glass);
@@ -1007,6 +1027,297 @@ body {
 .lyrics-panel p:first-child {
   color: var(--primary-purple);
 }
+
+/* ---------- Lounge Sub-tabs ---------- */
+.lounge-subtabs {
+  display: flex;
+  gap: 1.5rem;
+  border-bottom: 1px solid var(--border-glass);
+  padding-bottom: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.subtab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  position: relative;
+  transition: var(--transition-smooth);
+}
+
+.subtab-btn.active {
+  color: #fff;
+}
+
+.subtab-btn.active::after {
+  content: "";
+  position: absolute;
+  bottom: -0.6rem;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--accent-gold);
+  box-shadow: 0 0 8px rgba(255, 209, 102, 0.5);
+}
+
+/* ---------- Slice Comments Section ---------- */
+.comments-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 1rem;
+  overflow-y: auto;
+  padding-right: 0.3rem;
+}
+
+.comments-header {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  padding-bottom: 0.5rem;
+  border-bottom: 1px dashed var(--border-glass);
+}
+
+.comments-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+}
+
+.comments-empty .muted {
+  font-size: 0.82rem;
+  margin-top: 0.4rem;
+  opacity: 0.7;
+}
+
+.comment-slice-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-glass);
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.comment-slice-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.comment-slice-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.comment-slice-meta {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.comment-slice-location {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--primary-purple);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.comment-slice-author {
+  font-size: 0.75rem;
+  color: var(--accent-gold);
+}
+
+.comment-count-badge {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.comment-slice-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 0.3rem;
+}
+
+.no-comments-yet {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  padding: 1.5rem 0;
+  opacity: 0.7;
+}
+
+/* 评论消息复用聊天样式 */
+.comment-msg {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.comment-msg.mine {
+  flex-direction: row-reverse;
+}
+
+.comment-msg .msg-body {
+  max-width: 80%;
+}
+
+.comment-msg.mine .msg-body {
+  align-items: flex-end;
+}
+
+/* 评论表单 */
+.comment-form {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.3rem;
+}
+
+.comment-form input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-glass);
+  color: #fff;
+  padding: 0.5rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.comment-form input:focus {
+  border-color: var(--primary-purple);
+}
+
+.btn-sm {
+  padding: 0.45rem 1rem;
+  font-size: 0.82rem;
+}
+
+/* 邀请入群按钮 */
+.invite-btn {
+  background: linear-gradient(135deg, var(--primary-purple), #6c4dc4);
+  border: none;
+  color: #fff;
+  padding: 0.2rem 0.6rem;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  white-space: nowrap;
+}
+
+.invite-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 10px var(--primary-glow);
+}
+
+.invite-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 切片评论数徽章（在切片视图上） */
+.slice-comments-badge {
+  font-size: 0.72rem;
+  color: #b39dfa;
+  background: rgba(155, 93, 229, 0.15);
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  align-self: flex-start;
+  margin-top: 0.3rem;
+}
+
+.slice-comments-badge.comments-off {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* ---------- Group Chat Modal ---------- */
+.group-chat-modal .modal-box {
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+}
+
+.group-members-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px dashed var(--border-glass);
+  margin-bottom: 0.5rem;
+}
+
+.group-member {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  position: relative;
+}
+
+.group-member.online {
+  color: #fff;
+  background: rgba(6, 214, 160, 0.15);
+  border: 1px solid rgba(6, 214, 160, 0.3);
+}
+
+.member-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-purple), #b39dfa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.member-name {
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #666;
+  flex-shrink: 0;
+}
+
+.group-member.online .member-dot {
+  background: #06d6a0;
+  box-shadow: 0 0 6px #06d6a0;
+}
+
+/* 群聊内的 chat-messages 复用现有样式 */
 
 @media (max-width: 900px) {
   .main-layout { grid-template-columns: 1fr; padding: 1rem; }

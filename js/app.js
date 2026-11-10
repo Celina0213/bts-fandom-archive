@@ -24,6 +24,8 @@
   const CHAT_STORAGE_KEY = "army_echoes_chats";
   const LIKE_KEY = "army_echoes_slice_likes";
   const LIKED_KEY = "army_echoes_slice_liked";
+  const COMMENTS_STORAGE_KEY = "army_echoes_slice_comments";   // 切片评论（按 sliceSid 分组）
+  const GROUPS_STORAGE_KEY = "army_echoes_groups";             // 群聊数据（按 gid 分组）
 
   // ---------- Memory slice likes（localStorage 持久化 + BroadcastChannel 多标签同步） ----------
   function loadLikeMap() {
@@ -66,6 +68,141 @@
     saveLikeMap(m);
     localStorage.setItem(LIKED_KEY, JSON.stringify([...liked]));
     return m[sid];
+  }
+
+  // ---------- 切片评论系统（localStorage 持久化 + BroadcastChannel 多标签同步） ----------
+  function loadComments() {
+    try { return JSON.parse(localStorage.getItem(COMMENTS_STORAGE_KEY) || "{}"); } catch (e) { return {}; }
+  }
+
+  function saveComments(comments) {
+    localStorage.setItem(COMMENTS_STORAGE_KEY, JSON.stringify(comments));
+  }
+
+  // 获取某个切片的所有评论
+  function getSliceComments(sliceSid) {
+    const all = loadComments();
+    return all[sliceSid] || [];
+  }
+
+  // 发表评论到指定切片
+  function postComment(sliceSid, text, replyTo = null) {
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const comment = {
+      _cid: Date.now() + "-" + CLIENT_ID,
+      user: (myProfile && myProfile.nick) || "GuestARMY",
+      ip: myProfile ? myProfile.ip : "Unknown",
+      text: text,
+      time: timeStr,
+      replyTo: replyTo,
+      mine: true
+    };
+    const all = loadComments();
+    if (!all[sliceSid]) all[sliceSid] = [];
+    all[sliceSid].push(comment);
+    saveComments(all);
+    if (bc) bc.postMessage({ type: "comment", sliceSid, comment });
+    return comment;
+  }
+
+  // ---------- 群聊系统（发布者邀请评论者入群，群内实时聊天 + 在线状态） ----------
+  let activeGroup = null;   // 当前打开的群聊对象
+
+  function loadGroups() {
+    try { return JSON.parse(localStorage.getItem(GROUPS_STORAGE_KEY) || "{}"); } catch (e) { return {}; }
+  }
+
+  function saveGroups(groups) {
+    localStorage.setItem(GROUPS_STORAGE_KEY, JSON.stringify(groups));
+  }
+
+  // 创建新群（发布者调用）
+  function createGroup(sliceSid, sliceAuthor, inviteeName) {
+    const gid = "grp-" + Date.now().toString(36);
+    const group = {
+      gid: gid,
+      name: `${sliceAuthor}'s Discussion`,
+      createdBy: sliceAuthor,
+      createdForSlice: sliceSid,
+      members: [sliceAuthor, inviteeName],
+      memberPresence: {},  // { userName: lastActiveTimestamp }
+      messages: []
+    };
+    // 加入自己（如果自己不是发布者）
+    if (myProfile && myProfile.nick !== sliceAuthor && !group.members.includes(myProfile.nick)) {
+      group.members.push(myProfile.nick);
+    }
+    const groups = loadGroups();
+    groups[gid] = group;
+    saveGroups(groups);
+    // 标记在线
+    updateGroupPresence(gid);
+    if (bc) bc.postMessage({ type: "group-create", group });
+    return group;
+  }
+
+  // 邀请新成员加入已有群
+  function inviteToGroup(gid, newMember) {
+    const groups = loadGroups();
+    const g = groups[gid];
+    if (!g || g.members.includes(newMember)) return false;
+    g.members.push(newMember);
+    saveGroups(groups);
+    if (bc) bc.postMessage({ type: "group-invite", gid, member: newMember });
+    return true;
+  }
+
+  // 更新自己在群内的在线状态
+  function updateGroupPresence(gid) {
+    if (!myProfile || !myProfile.nick) return;
+    const groups = loadGroups();
+    const g = groups[gid];
+    if (!g) return;
+    if (!g.memberPresence) g.memberPresence = {};
+    g.memberPresence[myProfile.nick] = Date.now();
+    saveGroups(groups);
+  }
+
+  // 发送群消息
+  function sendGroupMessage(gid, text) {
+    if (!myProfile) return null;
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const msg = {
+      _gmid: Date.now() + "-" + CLIENT_ID,
+      user: myProfile.nick,
+      ip: myProfile.ip,
+      text: text,
+      time: timeStr,
+      mine: true
+    };
+    const groups = loadGroups();
+    const g = groups[gid];
+    if (!g) return null;
+    g.messages.push(msg);
+    updateGroupPresence(gid);
+    saveGroups(groups);
+    if (bc) bc.postMessage({ type: "group-msg", gid, msg });
+    return msg;
+  }
+
+  // 清理超过30秒未活跃的群成员离线标记
+  function cleanupGroupPresence() {
+    const groups = loadGroups();
+    const now = Date.now();
+    let changed = false;
+    for (const gid in groups) {
+      const g = groups[gid];
+      if (!g.memberPresence) continue;
+      for (const name in g.memberPresence) {
+        if (now - g.memberPresence[name] > 30000) {
+          delete g.memberPresence[name];
+          changed = true;
+        }
+      }
+    }
+    if (changed) saveGroups(groups);
   }
 
   // 读取本地存储
@@ -226,6 +363,49 @@
             sliceLikeBtn.classList.toggle("liked", loadLikedSet().has(d.sid));
           }
         }
+      } else if (d.type === "comment" && d.sliceSid && d.comment) {
+        // 同步评论到其他标签页
+        const allCmts = loadComments();
+        if (!allCmts[d.sliceSid]) allCmts[d.sliceSid] = [];
+        if (!allCmts[d.sliceSid].some(c => c._cid === d.comment._cid)) {
+          allCmts[d.sliceSid].push(d.comment);
+          saveComments(allCmts);
+        }
+        // 如果当前在评论区，刷新
+        if (!commentsContainer.hidden) renderSliceComments();
+        updateSliceCommentsBadge();
+      } else if (d.type === "group-create" && d.group) {
+        const groups = loadGroups();
+        groups[d.group.gid] = d.group;
+        saveGroups(groups);
+        if (activeGroup && activeGroup.gid === d.group.gid) {
+          activeGroup = d.group;
+          renderGroupChatUI();
+        }
+      } else if (d.type === "group-invite" && d.gid && d.member) {
+        const groups = loadGroups();
+        const g = groups[d.gid];
+        if (g && !g.members.includes(d.member)) {
+          g.members.push(d.member);
+          saveGroups(groups);
+          if (activeGroup && activeGroup.gid === d.gid) {
+            activeGroup = g;
+            renderGroupMembers();
+          }
+        }
+      } else if (d.type === "group-msg" && d.gid && d.msg) {
+        const groups = loadGroups();
+        const g = groups[d.gid];
+        if (g) {
+          if (!g.messages.some(m => m._gmid === d.msg._gmid)) {
+            g.messages.push(d.msg);
+            saveGroups(groups);
+            if (activeGroup && activeGroup.gid === d.gid) {
+              activeGroup = g;
+              renderGroupMessages();
+            }
+          }
+        }
       }
     };
     // 心跳：广播自己的在线状态，清理超过 15 秒未活跃的标签页
@@ -352,6 +532,24 @@
   const cancelUploadBtn = document.getElementById("cancelUploadBtn");
   const uploadForm = document.getElementById("uploadForm");
 
+  // Lounge sub-tabs & comments
+  const loungeSubtabs = document.getElementById("loungeSubtabs");
+  const subtabLiveBtn = document.getElementById("subtabLiveBtn");
+  const subtabCommentsBtn = document.getElementById("subtabCommentsBtn");
+  const commentsContainer = document.getElementById("commentsContainer");
+  const commentsList = document.getElementById("commentsList");
+  const commentsSongTitle = document.getElementById("commentsSongTitle");
+  const sliceCommentsBadge = document.getElementById("sliceCommentsBadge");
+
+  // Group chat
+  const groupChatModal = document.getElementById("groupChatModal");
+  const groupChatTitle = document.getElementById("groupChatTitle");
+  const closeGroupChatBtn = document.getElementById("closeGroupChatBtn");
+  const groupChatBox = document.getElementById("groupChatBox");
+  const groupChatForm = document.getElementById("groupChatForm");
+  const groupChatInput = document.getElementById("groupChatInput");
+  const groupMembersBar = document.getElementById("groupMembersBar");
+
   function getActiveSong() {
     return ARCHIVE_DATA[currentEraKey].songs[currentSongIndex];
   }
@@ -407,6 +605,9 @@
     sliceLikeCount.textContent = likeCount(sid, current.likes);
     sliceLikeBtn.classList.toggle("liked", loadLikedSet().has(sid));
 
+    // 评论状态徽章
+    updateSliceCommentsBadge();
+
     playerTitle.textContent = song.title;
     playerMeta.textContent = song.album;
   }
@@ -439,6 +640,251 @@
     chatBox.scrollTop = chatBox.scrollHeight;
     renderLiveStatus();
     updateLyricsBackground(song);
+  }
+
+  // ---------- 切片评论区渲染 ----------
+  let commentReplyTarget = null; // 当前正在回复的评论 {user, text, _cid}
+
+  function renderSliceComments() {
+    const song = getActiveSong();
+    commentsSongTitle.textContent = song.title;
+    const slices = song.slices || [];
+
+    // 筛选允许评论的切片
+    const commentableSlices = slices.filter(s => s.commentsAllowed !== false);
+
+    if (commentableSlices.length === 0) {
+      commentsList.innerHTML = `
+        <div class="comments-empty">
+          <p>📝 No memory slices allow comments yet.</p>
+          <p class="muted">Publishers can enable comments when sharing their memories.</p>
+        </div>`;
+      return;
+    }
+
+    commentsList.innerHTML = commentableSlices.map((slice, idx) => {
+      const sid = getSliceSid(slice, song.id);
+      const comments = getSliceComments(sid);
+      const isPublisher = myProfile && myProfile.nick === slice.author;
+
+      return `
+        <div class="comment-slice-card" data-slice-sid="${sid}">
+          <div class="comment-slice-header">
+            <img class="comment-slice-thumb" src="${escapeText(slice.image)}" alt="" loading="lazy">
+            <div class="comment-slice-meta">
+              <span class="comment-slice-location">${escapeText(slice.location)}</span>
+              <span class="comment-slice-author">by ${escapeText(slice.author)}</span>
+            </div>
+            <span class="comment-count-badge">${comments.length} 💬</span>
+          </div>
+          <div class="comment-slice-body">
+            ${renderCommentsForSlice(sid, comments, isPublisher, slice.author)}
+          </div>
+          <form class="comment-form" data-target-sid="${sid}">
+            <input type="text" placeholder="Share your thoughts on this memory..." maxlength="200" autocomplete="off" required>
+            <button type="submit" class="btn-primary btn-sm">Comment</button>
+          </form>
+        </div>`;
+    }).join("");
+
+    // 绑定评论区事件
+    bindCommentEvents();
+  }
+
+  function renderCommentsForSlice(sliceSid, comments, isPublisher, sliceAuthor) {
+    if (comments.length === 0) {
+      return `<p class="no-comments-yet">No comments yet. Be the first to share!</p>`;
+    }
+    return comments.map((c, i) => {
+      const avatar = escapeText((c.user || "?").trim().charAt(0).toUpperCase());
+      const replyHtml = c.replyTo
+        ? `<div class="reply-quote">↩ Replying to @${escapeText(c.replyTo.user)}: ${escapeText(c.replyTo.text)}</div>`
+        : "";
+      const inviteBtn = isPublisher && !c.mine
+        ? `<button type="button" class="invite-btn" data-invite-user="${escapeText(c.user)}" data-slice-sid="${sliceSid}">+ Invite to Group</button>`
+        : "";
+      const replyBtn = !c.mine
+        ? `<button type="button" class="reply-btn c-reply-btn" data-cidx="${i}" data-slice-sid="${sliceSid}">Reply</button>`
+        : "";
+      return `
+        <div class="comment-msg${c.mine ? " mine" : ""}">
+          <div class="msg-avatar">${avatar}</div>
+          <div class="msg-body">
+            <div class="msg-sender">${escapeText(c.user)}<span class="time-stamp">${escapeText(c.time)}</span></div>
+            <div class="msg-bubble">${replyHtml}<div class="user-text">${escapeText(c.text)}</div></div>
+            <div class="msg-footer">
+              ${inviteBtn}<span class="msg-ip">📍${escapeText(c.ip)}</span>${replyBtn}
+            </div>
+          </div>
+        </div>`;
+    }).join("");
+  }
+
+  function bindCommentEvents() {
+    // 发表评论表单
+    commentsList.querySelectorAll(".comment-form").forEach(form => {
+      form.addEventListener("submit", e => {
+        e.preventDefault();
+        const input = form.querySelector("input");
+        const text = input.value.trim();
+        if (!text) return;
+        const sliceSid = form.dataset.targetSid;
+        postComment(sliceSid, text, commentReplyTarget);
+        input.value = "";
+        commentReplyTarget = null;
+        renderSliceComments();
+        // 同步更新切片上的评论数徽章
+        updateSliceCommentsBadge();
+      });
+    });
+
+    // 回复按钮
+    commentsList.querySelectorAll(".c-reply-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const cidx = parseInt(btn.dataset.cidx, 10);
+        const sliceSid = btn.dataset.sliceSid;
+        const comments = getSliceComments(sliceSid);
+        const target = comments[cidx];
+        if (!target) return;
+        commentReplyTarget = { user: target.user, text: target.text.slice(0, 40), _cid: target._cid };
+        // 高亮显示正在回复
+        btn.textContent = "↩ Replying...";
+        btn.disabled = true;
+        setTimeout(() => { btn.textContent = "Reply"; btn.disabled = false; }, 3000);
+        // 滚动到对应表单
+        const card = btn.closest(".comment-slice-card");
+        const form = card.querySelector(".comment-form");
+        form.querySelector("input").focus();
+        form.querySelector("input").placeholder = `Replying to @${target.user}...`;
+      });
+    });
+
+    // 邀请入群按钮
+    commentsList.querySelectorAll(".invite-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const invitee = btn.dataset.inviteUser;
+        const sliceSid = btn.dataset.sliceSid;
+        // 查找或创建该切片的群
+        const song = getActiveSong();
+        const slices = song.slices || [];
+        const slice = slices.find(s => getSliceSid(s, song.id) === sliceSid);
+        if (!slice) return;
+
+        const groups = loadGroups();
+        // 找已有群（同一发布者、同一切片）
+        let group = Object.values(groups).find(g =>
+          g.createdForSlice === sliceSid && g.createdBy === slice.author
+        );
+
+        if (group) {
+          // 已有群，直接邀请
+          inviteToGroup(group.gid, invitee);
+        } else {
+          // 创建新群
+          group = createGroup(sliceSid, slice.author, invitee);
+        }
+
+        // 打开群聊窗口
+        openGroupChat(group.gid);
+        btn.textContent = "✓ Invited";
+        btn.disabled = true;
+        setTimeout(() => { btn.textContent = "+ Invite to Group"; btn.disabled = false; }, 3000);
+      });
+    });
+  }
+
+  // 更新切片视图上的评论数徽章
+  function updateSliceCommentsBadge() {
+    const song = getActiveSong();
+    const slices = song.slices || [];
+    if (!slices.length) { sliceCommentsBadge.hidden = true; return; }
+    const current = slices[currentSliceIndex % slices.length];
+    const sid = getSliceSid(current, song.id);
+
+    if (current.commentsAllowed === false) {
+      sliceCommentsBadge.textContent = "💬 Comments off";
+      sliceCommentsBadge.classList.add("comments-off");
+      sliceCommentsBadge.hidden = false;
+    } else {
+      const count = getSliceComments(sid).length;
+      if (count > 0) {
+        sliceCommentsBadge.textContent = `💬 ${count} comments`;
+        sliceCommentsBadge.classList.remove("comments-off");
+        sliceCommentsBadge.hidden = false;
+      } else {
+        sliceCommentsBadge.hidden = true;
+      }
+    }
+  }
+
+  // ---------- 群聊渲染 ----------
+  function openGroupChat(gid) {
+    const groups = loadGroups();
+    const g = groups[gid];
+    if (!g) return;
+    activeGroup = g;
+    groupChatTitle.textContent = g.name + ` (${g.members.length} members)`;
+    updateGroupPresence(gid);
+    renderGroupChatUI();
+    groupChatModal.showModal();
+    // 心跳：每5秒更新在线状态
+    if (!window._groupHeartbeat) {
+      window._groupHeartbeat = setInterval(() => {
+        if (activeGroup) {
+          updateGroupPresence(activeGroup.gid);
+          cleanupGroupPresence();
+          renderGroupMembers();
+        }
+      }, 5000);
+    }
+  }
+
+  function closeGroupChat() {
+    activeGroup = null;
+    groupChatModal.close();
+    if (window._groupHeartbeat) {
+      clearInterval(window._groupHeartbeat);
+      window._groupHeartbeat = null;
+    }
+  }
+
+  function renderGroupChatUI() {
+    if (!activeGroup) return;
+    renderGroupMessages();
+    renderGroupMembers();
+  }
+
+  function renderGroupMessages() {
+    if (!activeGroup) return;
+    groupChatBox.innerHTML = (activeGroup.messages || []).map(msg => {
+      const avatar = escapeText((msg.user || "?").trim().charAt(0).toUpperCase());
+      const isMine = msg.user === (myProfile && myProfile.nick);
+      return `
+        <div class="chat-msg${isMine ? " mine" : ""}">
+          <div class="msg-avatar">${avatar}</div>
+          <div class="msg-body">
+            <div class="msg-sender">${escapeText(msg.user)}<span class="time-stamp">${escapeText(msg.time)}</span></div>
+            <div class="msg-bubble"><div class="user-text">${escapeText(msg.text)}</div></div>
+          </div>
+        </div>`;
+    }).join("");
+    groupChatBox.scrollTop = groupChatBox.scrollHeight;
+  }
+
+  function renderGroupMembers() {
+    if (!activeGroup) return;
+    const now = Date.now();
+    const presence = activeGroup.memberPresence || {};
+    groupMembersBar.innerHTML = activeGroup.members.map(name => {
+      const isOnline = presence[name] && (now - presence[name]) < 30000;
+      const avatar = name.trim().charAt(0).toUpperCase();
+      return `
+        <div class="group-member${isOnline ? " online" : ""}" title="${isOnline ? 'Online' : 'Offline'} — ${name}">
+          <span class="member-avatar">${avatar}</span>
+          <span class="member-name">${escapeText(name)}</span>
+          <span class="member-dot"></span>
+        </div>`;
+    }).join("");
   }
 
   // Spotify Embed 播放器（替代 Web Audio 合成音）
@@ -784,14 +1230,38 @@
     tabChatBtn.classList.remove("active");
     sliceContainer.style.display = "flex";
     chatContainer.style.display = "none";
+    commentsContainer.style.display = "none";
+    loungeSubtabs.style.display = "none";
   });
 
   tabChatBtn.addEventListener("click", () => {
     tabChatBtn.classList.add("active");
     tabSliceBtn.classList.remove("active");
     sliceContainer.style.display = "none";
+    loungeSubtabs.style.display = "flex";
+    // 默认显示 Live Discussion 子标签
+    subtabLiveBtn.classList.add("active");
+    subtabCommentsBtn.classList.remove("active");
     chatContainer.style.display = "flex";
+    commentsContainer.style.display = "none";
     renderChats();
+  });
+
+  // Lounge 子标签切换
+  subtabLiveBtn.addEventListener("click", () => {
+    subtabLiveBtn.classList.add("active");
+    subtabCommentsBtn.classList.remove("active");
+    chatContainer.style.display = "flex";
+    commentsContainer.style.display = "none";
+    renderChats();
+  });
+
+  subtabCommentsBtn.addEventListener("click", () => {
+    subtabCommentsBtn.classList.add("active");
+    subtabLiveBtn.classList.remove("active");
+    chatContainer.style.display = "none";
+    commentsContainer.style.display = "block";
+    renderSliceComments();
   });
 
   // 发送聊天消息（带昵称、IP属地、回复引用，并同步到其他标签页）
@@ -921,16 +1391,29 @@
   closeUploadBtn.addEventListener("click", closeModal);
   cancelUploadBtn.addEventListener("click", closeModal);
 
+  // 群聊弹窗事件
+  closeGroupChatBtn.addEventListener("click", closeGroupChat);
+  groupChatForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const text = groupChatInput.value.trim();
+    if (!text || !activeGroup) return;
+    sendGroupMessage(activeGroup.gid, text);
+    groupChatInput.value = "";
+    renderGroupChatUI();
+  });
+
   uploadForm.addEventListener("submit", e => {
     e.preventDefault();
     const song = getActiveSong();
+    const allowComments = document.getElementById("formAllowComments").checked;
     const newSlice = {
       sid: "up-" + Date.now().toString(36) + "-" + CLIENT_ID,
       likes: 0,
       location: document.getElementById("formLocation").value.trim(),
       image: document.getElementById("formImage").value.trim(),
       author: document.getElementById("formAuthor").value.trim(),
-      caption: document.getElementById("formCaption").value.trim()
+      caption: document.getElementById("formCaption").value.trim(),
+      commentsAllowed: allowComments   // 发布者选择是否允许评论
     };
 
     song.slices.unshift(newSlice);

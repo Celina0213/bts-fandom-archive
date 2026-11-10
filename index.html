@@ -38,6 +38,12 @@
         <button class="tab-btn" id="tabChatBtn">💬 Listening Lounge (<span id="listenerBadge">--</span>)</button>
       </div>
 
+      <!-- Lounge sub-tabs (only visible when in chat mode) -->
+      <div class="lounge-subtabs" id="loungeSubtabs" style="display: none;">
+        <button class="subtab-btn active" id="subtabLiveBtn">⚡ Live Discussion</button>
+        <button class="subtab-btn" id="subtabCommentsBtn">📝 Slice Comments</button>
+      </div>
+
       <!-- Live status bar: how many are listening to this song right now, and what they are doing -->
       <div class="live-status-bar" id="liveStatusBar">
         <span class="live-dot"></span>
@@ -53,6 +59,7 @@
             <span class="location-badge" id="sliceLocation">Loading...</span>
             <p class="caption-text" id="sliceCaption">Loading memories...</p>
             <span class="author-tag" id="sliceAuthor">by ARMY</span>
+            <span class="slice-comments-badge" id="sliceCommentsBadge" hidden></span>
             <button class="slice-like-btn" id="sliceLikeBtn" title="Like this memory">💜 <span id="sliceLikeCount">0</span></button>
           </div>
         </div>
@@ -92,6 +99,16 @@
           <input type="text" id="chatInput" placeholder="Share how this song makes you feel right now..." maxlength="100" autocomplete="off" required>
           <button type="submit" class="btn-primary">Send</button>
         </form>
+      </div>
+
+      <!-- Mode C: Slice Comments (non-real-time, per-slice discussion) -->
+      <div class="comments-container" id="commentsContainer" style="display: none;">
+        <div class="comments-header">
+          <span>💬 Discuss memory slices for "<span id="commentsSongTitle"></span>"</span>
+        </div>
+        <div class="comments-list" id="commentsList">
+          <!-- Dynamically rendered: one card per slice that allows comments -->
+        </div>
       </div>
     </section>
   </main>
@@ -147,6 +164,11 @@
           <label for="formCaption">Your memory or travel story about this song</label>
           <textarea id="formCaption" rows="3" placeholder="Write down how you felt listening to this song, or your story from the trip..." required></textarea>
         </div>
+        <div class="form-group form-group-row">
+          <label for="formAllowComments">
+            <input type="checkbox" id="formAllowComments" checked> Allow others to comment on this memory
+          </label>
+        </div>
         <div class="modal-actions">
           <button type="button" class="btn-secondary" id="cancelUploadBtn">Cancel</button>
           <button type="submit" class="btn-primary">Publish</button>
@@ -179,6 +201,24 @@
           <button type="button" class="btn-secondary" id="cancelProfileBtn">Cancel</button>
           <button type="submit" class="btn-primary">Save & Go Online</button>
         </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Group Chat Modal (publisher invites commenters to a private group) -->
+  <dialog class="modal group-chat-modal" id="groupChatModal">
+    <div class="modal-box" style="max-width: 560px;">
+      <div class="modal-header">
+        <h3>💬 <span id="groupChatTitle">Group Discussion</span></h3>
+        <button class="close-btn" id="closeGroupChatBtn">&times;</button>
+      </div>
+      <div class="group-members-bar" id="groupMembersBar">
+        <!-- Dynamically rendered: member avatars with online status -->
+      </div>
+      <div class="chat-messages" id="groupChatBox" role="log" aria-live="polite"></div>
+      <form class="chat-form" id="groupChatForm">
+        <input type="text" id="groupChatInput" placeholder="Type your message in the group..." maxlength="200" autocomplete="off" required>
+        <button type="submit" class="btn-primary">Send</button>
       </form>
     </div>
   </dialog>
