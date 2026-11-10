@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ARMY Echoes · Home</title>
-  <link rel="stylesheet" href="css/style.css?v=20261110d">
+  <link rel="stylesheet" href="css/style.css?v=20261110e">
 </head>
 <body class="home-body">
   <!-- 3D parallax background (same as archive) -->
@@ -58,10 +58,49 @@
       </form>
     </section>
 
+    <!-- Scroll cue -->
+    <div class="home-scroll-cue" aria-hidden="true">
+      <span>Scroll</span>
+      <span class="home-scroll-arrow">▼</span>
+    </div>
+
     <footer class="home-footer">
       <a href="archive.html">Skip sign-in and just browse →</a>
     </footer>
   </main>
+
+  <!-- Features: scroll down to reveal -->
+  <section class="home-features" id="features">
+    <h2 class="home-section-title reveal">What's inside the archive</h2>
+    <div class="home-feature-grid">
+      <article class="home-feature-card reveal">
+        <div class="home-feature-icon">📸</div>
+        <h3>Memory Slices</h3>
+        <p>Pin photos, places and stories to every song. Swipe through the memory carousel of each era.</p>
+      </article>
+      <article class="home-feature-card reveal">
+        <div class="home-feature-icon">💬</div>
+        <h3>Forum Comments</h3>
+        <p>Every slice has its own thread. Reply, quote and discuss — publishers can even lock comments.</p>
+      </article>
+      <article class="home-feature-card reveal">
+        <div class="home-feature-icon">🎧</div>
+        <h3>Listening Lounge</h3>
+        <p>A live chat room per song. See who is listening right now and what they are feeling.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- Final call to action -->
+  <section class="home-cta">
+    <h2 class="reveal">Ready to leave your echo?</h2>
+    <p class="reveal">Sign in above, or just wander in as a guest.</p>
+    <a href="archive.html" class="btn-primary home-cta-btn reveal">Enter the Archive →</a>
+  </section>
+
+  <footer class="home-footer home-footer-end">
+    <p>💜 ARMY Echoes · Built with vanilla HTML/CSS/JS · 2026</p>
+  </footer>
 
   <script>
     (function () {
@@ -125,6 +164,37 @@
         localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
         window.location.href = "archive.html";
       });
+
+      // ---------- 滚动效果 ----------
+      var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      // 背景随滚动产生视差（rAF 节流）
+      var bg = document.querySelector(".bg-3d");
+      var scrollRaf = null;
+      if (bg && !reduceMotion) {
+        window.addEventListener("scroll", function () {
+          if (scrollRaf) return;
+          scrollRaf = requestAnimationFrame(function () {
+            scrollRaf = null;
+            bg.style.transform = "translateY(" + (window.scrollY * 0.35).toFixed(1) + "px)";
+          });
+        }, { passive: true });
+      }
+
+      // 区块滚动到位时渐入
+      if ("IntersectionObserver" in window) {
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (en.isIntersecting) {
+              en.target.classList.add("revealed");
+              io.unobserve(en.target);
+            }
+          });
+        }, { threshold: 0.18 });
+        document.querySelectorAll(".reveal").forEach(function (el) { io.observe(el); });
+      } else {
+        document.querySelectorAll(".reveal").forEach(function (el) { el.classList.add("revealed"); });
+      }
     })();
   </script>
 </body>
