@@ -1607,6 +1607,13 @@
     if (derbyState && derbyState.winner) resetDerby(derbyState.winner);
   });
 
+  // 看门狗：任何原因导致获胜后 6 秒仍未重开（如重开定时器丢失），强制开新局
+  setInterval(() => {
+    if (derbyState && derbyState.winner && Date.now() - derbyState.finishedAt > 6000) {
+      resetDerby(derbyState.winner);
+    }
+  }, 1000);
+
   // ---------- 3D 视差背景：鼠标跟随倾斜（rAF 节流，触屏/无鼠标设备跳过） ----------
   const bg3d = document.querySelector(".bg-3d");
   if (bg3d && window.matchMedia("(pointer: fine)").matches) {
