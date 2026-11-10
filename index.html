@@ -1,232 +1,131 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="ARMY Echoes - BTS fandom time capsule and synced listening lounge platform">
-  <meta property="og:title" content="ARMY Echoes - BTS Fandom Archive">
-  <meta property="og:description" content="Archive every moment of your youth and listen in sync with ARMY worldwide.">
-  <meta property="og:type" content="website">
-  <title>ARMY Echoes - BTS Time Capsule & Listening Lounge</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22><text y=%2226%22 font-size=%2228%22>💜</text></svg>">
-  <link rel="stylesheet" href="css/style.css?v=20261110c">
+  <title>ARMY Echoes · Home</title>
+  <link rel="stylesheet" href="css/style.css?v=20261110d">
 </head>
-<body>
-  <!-- 3D parallax background (photo + glow + vignette layers) -->
+<body class="home-body">
+  <!-- 3D parallax background (same as archive) -->
   <div class="bg-3d" aria-hidden="true">
     <div class="bg-3d-layer bg-3d-photo"></div>
     <div class="bg-3d-layer bg-3d-glow"></div>
     <div class="bg-3d-layer bg-3d-vignette"></div>
   </div>
-  <header class="app-header">
-    <div class="logo">💜 ARMY Echoes</div>
-    <nav class="era-nav" aria-label="Era selection">
-      <ul id="eraList"></ul>
-    </nav>
-    <button class="profile-chip" id="profileChip" title="Click to edit my profile">
-      <span class="avatar" id="profileAvatar">?</span>
-      <span class="profile-meta">
-        <span class="profile-name" id="profileName">Guest</span>
-        <span class="profile-sub" id="profileSub">Tap to set up profile</span>
-      </span>
-    </button>
-  </header>
 
-  <main class="main-layout">
-    <aside class="sidebar" aria-label="Track navigation">
-      <h2 id="sidebarTitle">Tracks</h2>
-      <ul class="song-list" id="songList"></ul>
-    </aside>
+  <main class="home-hero">
+    <p class="home-eyebrow">BTS Fandom Archive · WebTech Project</p>
+    <h1 class="home-title">💜 ARMY <span>Echoes</span></h1>
+    <p class="home-tagline">
+      Pin your memories to the songs. Comment on each slice like a forum thread.
+      Listen together in the live lounge.
+    </p>
 
-    <section class="stage" aria-label="Main stage">
-      <div class="view-switch">
-        <button class="tab-btn active" id="tabSliceBtn">📸 Memory Slices</button>
-        <button class="tab-btn" id="tabChatBtn">💬 Listening Lounge (<span id="listenerBadge">--</span>)</button>
-      </div>
-
-
-      <!-- Live status bar: how many are listening to this song right now, and what they are doing -->
-      <div class="live-status-bar" id="liveStatusBar">
-        <span class="live-dot"></span>
-        <span id="liveStatusText">🎧 Counting listeners...</span>
-      </div>
-
-      <!-- Mode A: memory slice carousel -->
-      <div class="slice-container" id="sliceContainer">
-        <div class="slice-viewer">
-          <img id="sliceImg" src="" alt="Memory slice photo" loading="lazy">
-          <div class="slice-gradient-overlay"></div>
-          <div class="slice-info">
-            <span class="location-badge" id="sliceLocation">Loading...</span>
-            <p class="caption-text" id="sliceCaption">Loading memories...</p>
-            <span class="author-tag" id="sliceAuthor">by ARMY</span>
-            <span class="slice-comments-badge" id="sliceCommentsBadge" hidden></span>
-            <button class="slice-like-btn" id="sliceLikeBtn" title="Like this memory">💜 <span id="sliceLikeCount">0</span></button>
+    <!-- Login card -->
+    <section class="home-login" aria-label="Sign in">
+      <!-- Already has profile: welcome back view -->
+      <div id="welcomeView" hidden>
+        <div class="home-welcome-row">
+          <span class="home-avatar" id="welcomeAvatar">?</span>
+          <div>
+            <p class="home-welcome-title">Welcome back, <b id="welcomeNick">ARMY</b></p>
+            <p class="home-welcome-sub" id="welcomeSub"></p>
           </div>
         </div>
-
-        <div class="carousel-controls">
-          <button class="ctrl-btn" id="prevSlice" title="Previous">◀</button>
-          <div class="slice-indicators" id="sliceIndicators"></div>
-          <button class="ctrl-btn" id="nextSlice" title="Next">▶</button>
-        </div>
-
-        <!-- Per-slice comments panel (comments live directly under the published slice) -->
-        <div class="slice-comments-panel" id="sliceCommentsPanel">
-          <div class="slice-comments-header">
-            <span>💬 Comments (<span id="sliceCommentsCount">0</span>)</span>
-          </div>
-          <div class="slice-comments-list" id="sliceCommentsList"></div>
-          <form class="comment-form" id="sliceCommentForm">
-            <input type="text" id="sliceCommentInput" placeholder="Share your thoughts on this memory..." maxlength="200" autocomplete="off" required>
-            <button type="submit" class="btn-primary btn-sm">Comment</button>
-          </form>
-        </div>
-
-        <div class="upload-trigger-area">
-          <button class="btn-primary" id="openUploadBtn">+ Share My Memory Slice</button>
-        </div>
+        <button type="button" class="btn-primary home-enter-btn" id="enterBtn">Enter the Archive →</button>
+        <button type="button" class="home-switch-link" id="switchUserBtn">Not you? Sign in as someone else</button>
       </div>
 
-      <!-- Mode B: listening lounge chat room -->
-      <div class="chat-container" id="chatContainer" style="display: none;">
-        <!-- 滚动歌词背景（有本地歌词时显示） -->
-        <div class="lyrics-bg" id="lyricsBg" hidden aria-hidden="true"></div>
-
-        <div class="chat-header">
-          <div class="room-status">
-            <span class="pulse-dot"></span>
-            <span>Listening in sync with ARMY worldwide</span>
+      <!-- Login form -->
+      <form id="homeLoginForm" hidden>
+        <div class="home-form-group">
+          <label for="homeNick">Your ARMY nickname</label>
+          <input type="text" id="homeNick" maxlength="20" placeholder="e.g. ARMY_Seoul" required autocomplete="off">
+        </div>
+        <div class="home-form-row">
+          <div class="home-form-group">
+            <label for="homeIp">Region</label>
+            <select id="homeIp"></select>
           </div>
-          <button class="heart-cheer-btn" id="cheerBtn" title="Send purple hearts">💜 Cheer (<span id="cheerCount">777</span>)</button>
+          <div class="home-form-group">
+            <label for="homeStatus">Status</label>
+            <select id="homeStatus"></select>
+          </div>
         </div>
-
-        <div class="chat-messages" id="chatBox" role="log" aria-live="polite"></div>
-
-        <div class="reply-indicator" id="replyIndicator" hidden>
-          <span>↩ Replying to <b id="replyTargetName"></b></span>
-          <button type="button" id="cancelReplyBtn" title="Cancel reply">&times;</button>
-        </div>
-
-        <form class="chat-form" id="chatForm">
-          <input type="text" id="chatInput" placeholder="Share how this song makes you feel right now..." maxlength="100" autocomplete="off" required>
-          <button type="submit" class="btn-primary">Send</button>
-        </form>
-      </div>
+        <button type="submit" class="btn-primary home-enter-btn">Sign in &amp; Enter →</button>
+        <p class="home-login-hint">Your nickname appears on comments and in the Listening Lounge.</p>
+      </form>
     </section>
+
+    <footer class="home-footer">
+      <a href="archive.html">Skip sign-in and just browse →</a>
+    </footer>
   </main>
 
-  <footer class="player-bar">
-    <div class="track-info">
-      <span class="track-title" id="playerTitle">Spring Day (봄날)</span>
-      <span class="track-meta" id="playerMeta">BTS · You Never Walk Alone</span>
-    </div>
+  <script>
+    (function () {
+      "use strict";
+      var PROFILE_KEY = "army_echoes_profile";
+      var IP_OPTIONS = ["Beijing", "Shanghai", "Guangdong", "Taipei", "Hong Kong", "Seoul", "Busan", "Tokyo", "Los Angeles", "New York", "London", "Paris", "Bangkok", "Singapore", "Overseas"];
+      var STATUS_OPTIONS = ["Listening", "Sleeping", "Studying", "Eating", "Slacking off", "Daydreaming"];
 
-    <!-- Local audio custom player -->
-    <div class="custom-player" id="customPlayer" hidden>
-      <button class="play-circle" id="localPlayBtn" aria-label="Play/Pause">▶</button>
-      <div class="player-middle">
-        <div class="progress-wrap" id="progressWrap" title="Click or drag to seek">
-          <div class="progress-bar" id="progressBar"></div>
-        </div>
-        <span class="time-label" id="timeLabel">00:00 / 00:00</span>
-      </div>
-    </div>
+      var ipSelect = document.getElementById("homeIp");
+      var statusSelect = document.getElementById("homeStatus");
+      IP_OPTIONS.forEach(function (o) {
+        var op = document.createElement("option");
+        op.value = o; op.textContent = o;
+        ipSelect.appendChild(op);
+      });
+      STATUS_OPTIONS.forEach(function (o) {
+        var op = document.createElement("option");
+        op.value = o; op.textContent = o;
+        statusSelect.appendChild(op);
+      });
 
-    <!-- Third-party embed fallbacks (Spotify / NetEase / iTunes) -->
-    <div class="spotify-embed-wrapper" id="spotifyEmbedWrapper" hidden></div>
+      var welcomeView = document.getElementById("welcomeView");
+      var loginForm = document.getElementById("homeLoginForm");
 
-    <!-- Lyrics toggle button -->
-    <button class="lyrics-toggle" id="lyricsBtn" hidden>📜 Lyrics</button>
-  </footer>
+      function loadProfile() {
+        try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || "null"); } catch (e) { return null; }
+      }
 
-  <!-- Lyrics panel -->
-  <div class="lyrics-panel" id="lyricsPanel" hidden></div>
+      function showWelcome(p) {
+        loginForm.hidden = true;
+        welcomeView.hidden = false;
+        document.getElementById("welcomeAvatar").textContent = p.nick.trim().charAt(0).toUpperCase();
+        document.getElementById("welcomeNick").textContent = p.nick;
+        document.getElementById("welcomeSub").textContent = "IP " + p.ip + " · " + p.status;
+      }
 
-  <!-- Upload memory modal -->
-  <dialog class="modal" id="uploadModal">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h3>💜 Share Your Memory</h3>
-        <button class="close-btn" id="closeUploadBtn">&times;</button>
-      </div>
-      <form id="uploadForm">
-        <div class="form-group">
-          <label for="formLocation">Pilgrimage spot / City</label>
-          <input type="text" id="formLocation" placeholder="e.g. Gangneung · Hyangho Beach Bus Stop" required>
-        </div>
-        <div class="form-group">
-          <label for="formImage">Photo URL</label>
-          <input type="url" id="formImage" placeholder="https://example.com/photo.jpg" required>
-        </div>
-        <div class="form-group">
-          <label for="formAuthor">Your ARMY nickname</label>
-          <input type="text" id="formAuthor" placeholder="e.g. ARMY_Seoul" required>
-        </div>
-        <div class="form-group">
-          <label for="formCaption">Your memory or travel story about this song</label>
-          <textarea id="formCaption" rows="3" placeholder="Write down how you felt listening to this song, or your story from the trip..." required></textarea>
-        </div>
-        <div class="form-group form-group-row">
-          <label for="formAllowComments">
-            <input type="checkbox" id="formAllowComments" checked> Allow others to comment on this memory
-          </label>
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="btn-secondary" id="cancelUploadBtn">Cancel</button>
-          <button type="submit" class="btn-primary">Publish</button>
-        </div>
-      </form>
-    </div>
-  </dialog>
+      var saved = loadProfile();
+      if (saved && saved.nick) {
+        showWelcome(saved);
+      } else {
+        loginForm.hidden = false;
+      }
 
-  <!-- Profile modal -->
-  <dialog class="modal" id="profileModal">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h3>💜 My Profile</h3>
-        <button class="close-btn" id="closeProfileBtn">&times;</button>
-      </div>
-      <form id="profileForm">
-        <div class="form-group">
-          <label for="profileNickInput">Nickname</label>
-          <input type="text" id="profileNickInput" maxlength="16" placeholder="e.g. PurpleARMY_07" required>
-        </div>
-        <div class="form-group">
-          <label for="profileIpSelect">IP Location</label>
-          <select id="profileIpSelect"></select>
-        </div>
-        <div class="form-group">
-          <label for="profileStatusSelect">What are you doing now</label>
-          <select id="profileStatusSelect"></select>
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="btn-secondary" id="cancelProfileBtn">Cancel</button>
-          <button type="submit" class="btn-primary">Save & Go Online</button>
-        </div>
-      </form>
-    </div>
-  </dialog>
+      document.getElementById("switchUserBtn").addEventListener("click", function () {
+        welcomeView.hidden = true;
+        loginForm.hidden = false;
+        var nick = document.getElementById("homeNick");
+        nick.value = "";
+        nick.focus();
+      });
 
-  <!-- Group Chat Modal (publisher invites commenters to a private group) -->
-  <dialog class="modal group-chat-modal" id="groupChatModal">
-    <div class="modal-box" style="max-width: 560px;">
-      <div class="modal-header">
-        <h3>💬 <span id="groupChatTitle">Group Discussion</span></h3>
-        <button class="close-btn" id="closeGroupChatBtn">&times;</button>
-      </div>
-      <div class="group-members-bar" id="groupMembersBar">
-        <!-- Dynamically rendered: member avatars with online status -->
-      </div>
-      <div class="chat-messages" id="groupChatBox" role="log" aria-live="polite"></div>
-      <form class="chat-form" id="groupChatForm">
-        <input type="text" id="groupChatInput" placeholder="Type your message in the group..." maxlength="200" autocomplete="off" required>
-        <button type="submit" class="btn-primary">Send</button>
-      </form>
-    </div>
-  </dialog>
+      document.getElementById("enterBtn").addEventListener("click", function () {
+        window.location.href = "archive.html";
+      });
 
-  <script src="js/data.js?v=20261110c"></script>
-  <script src="js/app.js?v=20261110c"></script>
+      loginForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var nick = document.getElementById("homeNick").value.trim();
+        if (!nick) return;
+        var profile = { nick: nick, ip: ipSelect.value, status: statusSelect.value };
+        localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+        window.location.href = "archive.html";
+      });
+    })();
+  </script>
 </body>
 </html>
